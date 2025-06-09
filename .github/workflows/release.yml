@@ -51,6 +51,12 @@ jobs:
     - name: Generate API client
       run: task generate
     
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: latest
+        args: --timeout=5m --out-format=colored-line-number
+    
     - name: Run tests
       run: task test
     
