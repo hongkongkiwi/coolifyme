@@ -36,8 +36,14 @@ jobs:
     - name: Install dependencies
       run: go mod download
     
-    - name: Install oapi-codegen
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    - name: Install development tools
+      run: task install-tools
+    
+    - name: Install required dependencies
+      run: |
+        go get github.com/getkin/kin-openapi/openapi3
+        go get github.com/oapi-codegen/runtime
+        go get github.com/oapi-codegen/runtime/types
     
     - name: Generate API client
       run: task generate
@@ -71,8 +77,17 @@ jobs:
       with:
         version: 3.x
     
-    - name: Install oapi-codegen
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Install development tools  
+      run: task install-tools
+    
+    - name: Install required dependencies
+      run: |
+        go get github.com/getkin/kin-openapi/openapi3
+        go get github.com/oapi-codegen/runtime
+        go get github.com/oapi-codegen/runtime/types
     
     - name: Generate API client
       run: task generate
@@ -81,4 +96,37 @@ jobs:
       uses: golangci/golangci-lint-action@v8
       with:
         version: v1.64.8
-        args: --timeout=5m --out-format=colored-line-number 
+        args: --timeout=5m --out-format=colored-line-number
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+    
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Install development tools
+      run: task install-tools
+    
+    - name: Install required dependencies
+      run: |
+        go get github.com/getkin/kin-openapi/openapi3
+        go get github.com/oapi-codegen/runtime
+        go get github.com/oapi-codegen/runtime/types
+    
+    - name: Generate API client
+      run: task generate
+    
+    - name: Run security scan
+      run: task security-scan 

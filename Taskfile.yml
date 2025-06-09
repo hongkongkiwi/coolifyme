@@ -81,14 +81,22 @@ tasks:
   security-scan:
     desc: Run security scanner
     cmds:
-      - gosec ./...
+      - |
+        if command -v gosec >/dev/null 2>&1; then
+          gosec ./...
+        elif [ -f ~/go/bin/gosec ]; then
+          ~/go/bin/gosec ./...
+        else
+          echo "Error: gosec not found. Please install it with: go install github.com/securego/gosec/v2/cmd/gosec@latest"
+          exit 1
+        fi
 
   install-tools:
     desc: Install development tools
     cmds:
       - go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+      - go install github.com/securego/gosec/v2/cmd/gosec@latest
 
   docker-build:
     desc: Build Docker image
