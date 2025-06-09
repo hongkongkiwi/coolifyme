@@ -1,0 +1,14 @@
+# svu configuration for coolifyme
+# See: https://github.com/caarlos0/svu
+
+# Add 'v' prefix to tags (v1.0.0 instead of 1.0.0)
+tag.prefix: "v"
+
+# Always increment version even if no conventional commits found
+always: false
+
+# Enable verbose output
+verbose: false
+
+# Remove pre-release suffix when bumping to release version
+strip: true 

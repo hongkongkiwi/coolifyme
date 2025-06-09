@@ -97,6 +97,7 @@ tasks:
       - go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - go install github.com/securego/gosec/v2/cmd/gosec@latest
+      - go install github.com/caarlos0/svu/v3@latest
 
   docker-build:
     desc: Build Docker image
@@ -151,4 +152,103 @@ tasks:
     desc: Build and run the CLI
     deps: [build]
     cmds:
-      - ./bin/coolifyme --help 
+      - ./bin/coolifyme --help
+
+  # Version management tasks
+  version:
+    desc: Show current version (latest git tag)
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          svu current || echo "No version tags found"
+        elif [ -f ~/go/bin/svu ]; then
+          ~/go/bin/svu current || echo "No version tags found"
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+
+  version-next:
+    desc: Show next version based on conventional commits
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          svu next || echo "No commits since last tag"
+        elif [ -f ~/go/bin/svu ]; then
+          ~/go/bin/svu next || echo "No commits since last tag"
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+
+  bump-patch:
+    desc: Create patch version tag (x.y.Z)
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          NEW_TAG=$(svu patch)
+        elif [ -f ~/go/bin/svu ]; then
+          NEW_TAG=$(~/go/bin/svu patch)
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+        echo "Creating tag: $NEW_TAG"
+        git tag "$NEW_TAG"
+        git push origin "$NEW_TAG"
+        echo "✅ Released $NEW_TAG"
+
+  bump-minor:
+    desc: Create minor version tag (x.Y.z)
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          NEW_TAG=$(svu minor)
+        elif [ -f ~/go/bin/svu ]; then
+          NEW_TAG=$(~/go/bin/svu minor)
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+        echo "Creating tag: $NEW_TAG"
+        git tag "$NEW_TAG"
+        git push origin "$NEW_TAG"
+        echo "✅ Released $NEW_TAG"
+
+  bump-major:
+    desc: Create major version tag (X.y.z)
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          NEW_TAG=$(svu major)
+        elif [ -f ~/go/bin/svu ]; then
+          NEW_TAG=$(~/go/bin/svu major)
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+        echo "Creating tag: $NEW_TAG"
+        git tag "$NEW_TAG"
+        git push origin "$NEW_TAG"
+        echo "✅ Released $NEW_TAG"
+
+  bump-auto:
+    desc: Automatically bump version based on conventional commits  
+    cmds:
+      - |
+        if command -v svu >/dev/null 2>&1; then
+          NEW_TAG=$(svu next)
+        elif [ -f ~/go/bin/svu ]; then
+          NEW_TAG=$(~/go/bin/svu next)
+        else
+          echo "svu not found. Install with: task install-tools"
+          exit 1
+        fi
+        if [ -z "$NEW_TAG" ]; then
+          echo "No version bump needed (no commits since last tag)"
+          exit 0
+        fi
+        echo "Creating tag: $NEW_TAG"
+        git tag "$NEW_TAG"
+        git push origin "$NEW_TAG"
+        echo "✅ Released $NEW_TAG" 
