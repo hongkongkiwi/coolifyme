@@ -19,15 +19,34 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     
     - name: Install Task
       uses: arduino/setup-task@v2
       with:
         version: 3.x
     
-    - name: Install oapi-codegen
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Install development tools
+      run: task install-tools
+    
+    - name: Install required dependencies
+      run: |
+        go get github.com/getkin/kin-openapi/openapi3
+        go get github.com/oapi-codegen/runtime
+        go get github.com/oapi-codegen/runtime/types
     
     - name: Generate API client
       run: task generate
