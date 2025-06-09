@@ -9,9 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: ['1.21', '1.22']
     
     steps:
     - uses: actions/checkout@v4
@@ -19,7 +16,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: '1.22'
     
     - name: Install Task
       uses: arduino/setup-task@v2
@@ -67,7 +64,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     
     - name: Install Task
       uses: arduino/setup-task@v2
@@ -81,6 +78,7 @@ jobs:
       run: task generate
     
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v4
+      uses: golangci/golangci-lint-action@v6
       with:
-        version: latest 
+        version: v1.64.8
+        args: --timeout=5m --out-format=colored-line-number 

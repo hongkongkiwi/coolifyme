@@ -29,7 +29,6 @@ linters:
     - unconvert        # Unnecessary type conversions
     - goconst          # Repeated strings that could be constants
     - nolintlint       # Ill-formed or insufficient nolint directives
-    - copyloopvar      # Replaces exportloopref for Go 1.22+
     - whitespace       # Leading and trailing whitespace
 
 issues:
