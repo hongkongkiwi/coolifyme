@@ -18,7 +18,16 @@ tasks:
     desc: Generate Go client from OpenAPI spec
     cmds:
       - echo "Generating Go client from OpenAPI spec..."
-      - ~/go/bin/oapi-codegen -config oapi-codegen.yaml spec/coolify-openapi.yaml
+      - mkdir -p internal/api
+      - |
+        if command -v oapi-codegen >/dev/null 2>&1; then
+          oapi-codegen -config oapi-codegen.yaml spec/coolify-openapi.yaml
+        elif [ -f ~/go/bin/oapi-codegen ]; then
+          ~/go/bin/oapi-codegen -config oapi-codegen.yaml spec/coolify-openapi.yaml
+        else
+          echo "Error: oapi-codegen not found. Please install it with: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest"
+          exit 1
+        fi
       - echo "Client code generated successfully"
 
   build:
