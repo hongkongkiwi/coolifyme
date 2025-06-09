@@ -19,6 +19,9 @@ RUN go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
 # Copy source code
 COPY . .
 
+# Create directory structure for generated files
+RUN mkdir -p internal/api
+
 # Generate API client and build
 RUN /go/bin/oapi-codegen -config oapi-codegen.yaml spec/coolify-openapi.yaml
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o coolifyme cmd/*.go
