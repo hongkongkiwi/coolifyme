@@ -1,0 +1,43 @@
+version: 2
+updates:
+  # Go modules
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    reviewers:
+      - "hongkongkiwi"
+    assignees:
+      - "hongkongkiwi"
+    labels:
+      - "dependencies"
+      - "go"
+    # Auto-merge patch and minor updates
+    # Major updates will require manual review
+    
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    reviewers:
+      - "hongkongkiwi"
+    assignees:
+      - "hongkongkiwi"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    # Auto-merge all GitHub Actions updates
+    # Actions typically have good backward compatibility 

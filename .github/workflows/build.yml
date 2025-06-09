@@ -1,0 +1,87 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+    
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Install oapi-codegen
+      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    
+    - name: Generate API client
+      run: task generate
+    
+    - name: Run tests
+      run: task test
+    
+    - name: Run linting
+      run: task lint
+      continue-on-error: true
+    
+    - name: Build for multiple platforms
+      run: task build
+    
+    - name: Upload build artifacts
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coolifyme-dev-${{ github.sha }}
+        path: bin/
+        retention-days: 7
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+    
+    - name: Install oapi-codegen
+      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    
+    - name: Generate API client
+      run: task generate
+    
+    - name: Run security scan
+      run: task security-scan
+      continue-on-error: true 

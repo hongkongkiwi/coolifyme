@@ -1,0 +1,139 @@
+name: 'Setup Coolify CLI'
+description: 'Downloads and sets up the coolifyme CLI for use in GitHub Actions'
+branding:
+  icon: 'download-cloud'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'Version of coolifyme to install (default: latest)'
+    required: false
+    default: 'latest'
+  
+  token:
+    description: 'GitHub token for downloading releases (default: github.token)'
+    required: false
+    default: ${{ github.token }}
+
+  install-path:
+    description: 'Path to install coolifyme binary'
+    required: false
+    default: '/usr/local/bin'
+
+outputs:
+  version:
+    description: 'The version of coolifyme that was installed'
+    value: ${{ steps.install.outputs.version }}
+  
+  path:
+    description: 'Path to the installed coolifyme binary'
+    value: ${{ steps.install.outputs.path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Detect platform
+      id: platform
+      shell: bash
+      run: |
+        os=$(uname -s | tr '[:upper:]' '[:lower:]')
+        arch=$(uname -m)
+        
+        case $os in
+          linux) os="linux" ;;
+          darwin) os="darwin" ;;
+          *) echo "::error::Unsupported OS: $os"; exit 1 ;;
+        esac
+        
+        case $arch in
+          x86_64|amd64) arch="amd64" ;;
+          arm64|aarch64) arch="arm64" ;;
+          *) echo "::error::Unsupported architecture: $arch"; exit 1 ;;
+        esac
+        
+        platform="${os}-${arch}"
+        echo "platform=$platform" >> $GITHUB_OUTPUT
+        echo "::notice::Detected platform: $platform"
+
+    - name: Get latest version
+      id: version
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        if [ "$VERSION" = "latest" ]; then
+          echo "::notice::Getting latest version from GitHub API..."
+          VERSION=$(gh api repos/${{ github.action_repository }}/releases/latest --jq '.tag_name')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Failed to get latest version"
+            exit 1
+          fi
+          echo "::notice::Latest version: $VERSION"
+        fi
+        
+        # Remove 'v' prefix if present for consistency
+        clean_version=${VERSION#v}
+        echo "version=$clean_version" >> $GITHUB_OUTPUT
+        echo "tag_version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download and install coolifyme
+      id: install
+      shell: bash
+      env:
+        PLATFORM: ${{ steps.platform.outputs.platform }}
+        VERSION: ${{ steps.version.outputs.version }}
+        TAG_VERSION: ${{ steps.version.outputs.tag_version }}
+        INSTALL_PATH: ${{ inputs.install-path }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        binary_name="coolifyme-${PLATFORM}"
+        download_url="https://github.com/${{ github.action_repository }}/releases/download/${TAG_VERSION}/${binary_name}.tar.gz"
+        
+        echo "::notice::Downloading coolifyme $VERSION for $PLATFORM..."
+        echo "::debug::Download URL: $download_url"
+        
+        # Create temporary directory
+        tmp_dir=$(mktemp -d)
+        
+        # Download and extract
+        if ! curl -sL "$download_url" | tar -xz -C "$tmp_dir"; then
+          echo "::error::Failed to download or extract binary from $download_url"
+          exit 1
+        fi
+        
+        # Verify binary exists
+        if [ ! -f "$tmp_dir/$binary_name" ]; then
+          echo "::error::Binary $binary_name not found in archive"
+          ls -la "$tmp_dir"
+          exit 1
+        fi
+        
+        # Install binary
+        echo "::notice::Installing coolifyme to $INSTALL_PATH..."
+        sudo mkdir -p "$INSTALL_PATH"
+        sudo mv "$tmp_dir/$binary_name" "$INSTALL_PATH/coolifyme"
+        sudo chmod +x "$INSTALL_PATH/coolifyme"
+        
+        # Clean up
+        rm -rf "$tmp_dir"
+        
+        # Add to PATH for subsequent steps
+        echo "$INSTALL_PATH" >> $GITHUB_PATH
+        
+        # Set outputs
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "path=$INSTALL_PATH/coolifyme" >> $GITHUB_OUTPUT
+        
+        echo "::notice::coolifyme $VERSION installed successfully!"
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        if command -v coolifyme >/dev/null 2>&1; then
+          echo "::notice::Verification successful"
+          coolifyme --version
+        else
+          echo "::error::coolifyme not found in PATH after installation"
+          exit 1
+        fi 

@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+    
+    - name: Install oapi-codegen
+      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    
+    - name: Generate API client
+      run: task generate
+    
+    - name: Run tests
+      run: task test
+    
+    - name: Set version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Build release binaries
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: task release-build
+    
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/*
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+        body: |
+          ## Installation
+          
+          ### Download Binary
+          Download the appropriate binary for your platform from the assets below.
+          
+          ### Using Installation Script
+          ```bash
+          curl -sSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash
+          ```
+          
+          ### Using in GitHub Actions
+          ```yaml
+          - name: Setup Coolify CLI
+            uses: ${{ github.repository }}@v${{ github.ref_name }}
+            with:
+              version: ${{ github.ref_name }}
+          ```
+          
+          ### Docker
+          ```bash
+          docker run --rm -v ~/.config/coolifyme:/home/coolify/.config/coolifyme ghcr.io/${{ github.repository }}:${{ github.ref_name }} --help
+          ``` 

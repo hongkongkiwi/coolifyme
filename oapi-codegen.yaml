@@ -1,0 +1,6 @@
+generate:
+  client: true
+  models: true
+  embedded-spec: true
+package: coolify
+output: internal/api/coolify_client.go 

@@ -1,0 +1,137 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Generate code and build
+    cmds:
+      - task: generate
+      - task: build
+
+  update-spec:
+    desc: Update the OpenAPI spec from the official source
+    cmds:
+      - echo "Updating Coolify OpenAPI specification..."
+      - curl -o spec/coolify-openapi.yaml https://raw.githubusercontent.com/coollabsio/coolify/next/openapi.yaml
+      - echo "OpenAPI spec updated successfully"
+
+  generate:
+    desc: Generate Go client from OpenAPI spec
+    cmds:
+      - echo "Generating Go client from OpenAPI spec..."
+      - ~/go/bin/oapi-codegen -config oapi-codegen.yaml spec/coolify-openapi.yaml
+      - echo "Client code generated successfully"
+
+  build:
+    desc: Build the CLI binary
+    cmds:
+      - echo "Building coolifyme CLI..."
+      - |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        go build -ldflags="-X main.Version=${VERSION} -X main.GitCommit=${COMMIT} -X main.BuildDate=${DATE}" -o bin/coolifyme cmd/*.go
+      - echo "Build completed"
+
+  update-and-rebuild:
+    desc: Pull latest OpenAPI spec and rebuild everything
+    cmds:
+      - task: update-spec
+      - task: generate
+      - task: build
+      - echo "Successfully updated spec and rebuilt coolifyme"
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/
+      - rm -f internal/api/coolify_client.go
+      - echo "Clean completed"
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  test-coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -v -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
+  security-scan:
+    desc: Run security scanner
+    cmds:
+      - gosec ./...
+
+  install-tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t coolifyme:latest .
+
+  completions:
+    desc: Generate shell completions
+    deps: [build]
+    cmds:
+      - mkdir -p completions
+      - ./bin/coolifyme completion bash > completions/coolifyme.bash
+      - ./bin/coolifyme completion zsh > completions/coolifyme.zsh
+      - ./bin/coolifyme completion fish > completions/coolifyme.fish
+      - echo "Shell completions generated in completions/"
+
+  release-build:
+    desc: Build release binaries for multiple platforms
+    deps: [generate]
+    cmds:
+      - mkdir -p dist
+      - |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        LDFLAGS="-s -w -X main.Version=${VERSION} -X main.GitCommit=${COMMIT} -X main.BuildDate=${DATE}"
+        
+        echo "Building release binaries with version: ${VERSION}"
+        GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-linux-amd64 cmd/*.go
+        GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-linux-arm64 cmd/*.go
+        GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-darwin-amd64 cmd/*.go
+        GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-darwin-arm64 cmd/*.go
+        GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-windows-amd64.exe cmd/*.go
+        GOOS=windows GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/coolifyme-windows-arm64.exe cmd/*.go
+      - cd dist && find . -name 'coolifyme-*' -type f -exec tar -czf {}.tar.gz {} \;
+
+  install:
+    desc: Install the CLI to GOPATH/bin
+    deps: [build]
+    cmds:
+      - echo "Installing coolifyme CLI..."
+      - go install ./cmd
+      - echo "coolifyme installed successfully"
+
+  mod-tidy:
+    desc: Tidy up go modules
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  run:
+    desc: Build and run the CLI
+    deps: [build]
+    cmds:
+      - ./bin/coolifyme --help 

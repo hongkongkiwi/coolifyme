@@ -1,0 +1,140 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-homebrew:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout main repo
+      uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Download release assets and calculate SHA256
+      id: checksums
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Wait a bit for release assets to be fully available
+        sleep 30
+        
+        BASE_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}"
+        
+        echo "Downloading release assets to calculate SHA256..."
+        
+        # Download and calculate SHA256 for each platform
+        curl -sL "${BASE_URL}/coolifyme-darwin-amd64.tar.gz" | sha256sum | cut -d' ' -f1 > darwin-amd64.sha256
+        curl -sL "${BASE_URL}/coolifyme-darwin-arm64.tar.gz" | sha256sum | cut -d' ' -f1 > darwin-arm64.sha256
+        curl -sL "${BASE_URL}/coolifyme-linux-amd64.tar.gz" | sha256sum | cut -d' ' -f1 > linux-amd64.sha256
+        curl -sL "${BASE_URL}/coolifyme-linux-arm64.tar.gz" | sha256sum | cut -d' ' -f1 > linux-arm64.sha256
+        
+        # Set outputs
+        echo "darwin_amd64_sha256=$(cat darwin-amd64.sha256)" >> $GITHUB_OUTPUT
+        echo "darwin_arm64_sha256=$(cat darwin-arm64.sha256)" >> $GITHUB_OUTPUT
+        echo "linux_amd64_sha256=$(cat linux-amd64.sha256)" >> $GITHUB_OUTPUT
+        echo "linux_arm64_sha256=$(cat linux-arm64.sha256)" >> $GITHUB_OUTPUT
+        
+        echo "SHA256 checksums calculated:"
+        echo "  Darwin AMD64: $(cat darwin-amd64.sha256)"
+        echo "  Darwin ARM64: $(cat darwin-arm64.sha256)"
+        echo "  Linux AMD64:  $(cat linux-amd64.sha256)"
+        echo "  Linux ARM64:  $(cat linux-arm64.sha256)"
+    
+    - name: Checkout homebrew tap
+      uses: actions/checkout@v4
+      with:
+        repository: hongkongkiwi/homebrew-coolifyme
+        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        path: homebrew-tap
+    
+    - name: Update formula
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        DARWIN_AMD64_SHA256: ${{ steps.checksums.outputs.darwin_amd64_sha256 }}
+        DARWIN_ARM64_SHA256: ${{ steps.checksums.outputs.darwin_arm64_sha256 }}
+        LINUX_AMD64_SHA256: ${{ steps.checksums.outputs.linux_amd64_sha256 }}
+        LINUX_ARM64_SHA256: ${{ steps.checksums.outputs.linux_arm64_sha256 }}
+      run: |
+        cd homebrew-tap
+        
+        # Create updated formula
+        cat > Formula/coolifyme.rb << EOF
+        class Coolifyme < Formula
+          desc "A powerful command-line interface for the Coolify API"
+          homepage "https://github.com/hongkongkiwi/coolifyme"
+          license "MIT"
+          version "$VERSION"
+        
+          on_macos do
+            if Hardware::CPU.intel?
+              url "https://github.com/hongkongkiwi/coolifyme/releases/download/v$VERSION/coolifyme-darwin-amd64.tar.gz"
+              sha256 "$DARWIN_AMD64_SHA256"
+            elsif Hardware::CPU.arm?
+              url "https://github.com/hongkongkiwi/coolifyme/releases/download/v$VERSION/coolifyme-darwin-arm64.tar.gz"
+              sha256 "$DARWIN_ARM64_SHA256"
+            end
+          end
+        
+          on_linux do
+            if Hardware::CPU.intel?
+              url "https://github.com/hongkongkiwi/coolifyme/releases/download/v$VERSION/coolifyme-linux-amd64.tar.gz"
+              sha256 "$LINUX_AMD64_SHA256"
+            elsif Hardware::CPU.arm?
+              url "https://github.com/hongkongkiwi/coolifyme/releases/download/v$VERSION/coolifyme-linux-arm64.tar.gz"
+              sha256 "$LINUX_ARM64_SHA256"
+            end
+          end
+        
+          def install
+            bin.install "coolifyme-darwin-amd64" => "coolifyme" if Hardware::CPU.intel? && OS.mac?
+            bin.install "coolifyme-darwin-arm64" => "coolifyme" if Hardware::CPU.arm? && OS.mac?
+            bin.install "coolifyme-linux-amd64" => "coolifyme" if Hardware::CPU.intel? && OS.linux?
+            bin.install "coolifyme-linux-arm64" => "coolifyme" if Hardware::CPU.arm? && OS.linux?
+        
+            # Generate shell completions
+            generate_completions_from_executable(bin/"coolifyme", "completion")
+          end
+        
+          test do
+            assert_match "coolifyme version", shell_output("#{bin}/coolifyme --version")
+            
+            # Test help command
+            assert_match "A powerful CLI for the Coolify API", shell_output("#{bin}/coolifyme --help")
+            
+            # Test that config command exists
+            assert_match "Manage configuration", shell_output("#{bin}/coolifyme config --help")
+          end
+        end
+        EOF
+        
+        echo "Formula updated for version $VERSION"
+    
+    - name: Commit and push changes
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        cd homebrew-tap
+        
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        
+        git add Formula/coolifyme.rb
+        
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update coolifyme to v$VERSION"
+          git push
+          echo "Homebrew formula updated successfully!"
+        fi 
