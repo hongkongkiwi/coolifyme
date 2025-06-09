@@ -7,6 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
+	clientpkg "github.com/hongkongkiwi/coolifyme/pkg/client"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +63,7 @@ func deployApplicationCmd() *cobra.Command {
 			}
 
 			// Use the enhanced client method that supports PR deployments
-			options := &client.DeployApplicationOptions{
+			options := &clientpkg.DeployApplicationOptions{
 				Force:  force,
 				Branch: branch,
 			}

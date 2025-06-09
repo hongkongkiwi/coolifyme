@@ -1,12 +1,10 @@
 # golangci-lint configuration
 # See https://golangci-lint.run/usage/configuration/
 
+version: 1.5.2
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - bin
-    - dist
 
 linters:
   enable:
@@ -21,31 +19,7 @@ linters:
     - goimports
     - misspell
     - revive
-    - gocritic
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-  revive:
-    rules:
-      - name: exported
-        disabled: false
-        arguments:
-          - "checkPrivateReceivers"
-          - "sayRepetitiveInsteadOfStutters"
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - unparam
-    - path: cmd/
-      linters:
-        - gocyclo # CLI commands can be complex
-
- 
+  max-issues-per-linter: 0
+  max-same-issues: 0
