@@ -22,7 +22,7 @@ var databasesListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List databases",
 	Long:    "List all databases in your Coolify instance",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -46,7 +46,7 @@ var databasesGetCmd = &cobra.Command{
 	Short: "Get database details",
 	Long:  "Get detailed information about a specific database",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -72,7 +72,7 @@ var databasesStartCmd = &cobra.Command{
 	Short: "Start database",
 	Long:  "Start a database by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -97,7 +97,7 @@ var databasesStopCmd = &cobra.Command{
 	Short: "Stop database",
 	Long:  "Stop a database by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -122,7 +122,7 @@ var databasesRestartCmd = &cobra.Command{
 	Short: "Restart database",
 	Long:  "Restart a database by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -177,7 +177,7 @@ var databasesUpdateCmd = &cobra.Command{
 	Short: "Update a database",
 	Long:  "Update a database by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -208,7 +208,7 @@ var databasesCreatePostgreSQLCmd = &cobra.Command{
 	Use:   "postgresql",
 	Short: "Create a PostgreSQL database",
 	Long:  "Create a new PostgreSQL database",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -266,7 +266,7 @@ var databasesCreateMySQLCmd = &cobra.Command{
 	Use:   "mysql",
 	Short: "Create a MySQL database",
 	Long:  "Create a new MySQL database",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -324,7 +324,7 @@ var databasesCreateRedisCmd = &cobra.Command{
 	Use:   "redis",
 	Short: "Create a Redis database",
 	Long:  "Create a new Redis database",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -382,7 +382,7 @@ var databasesCreateMongoDBCmd = &cobra.Command{
 	Use:   "mongodb",
 	Short: "Create a MongoDB database",
 	Long:  "Create a new MongoDB database",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -465,7 +465,7 @@ var databasesCreateMariaDBCmd = &cobra.Command{
 }
 
 func createDatabaseStub(dbType string) func(cmd *cobra.Command, args []string) error {
-	return func(cmd *cobra.Command, args []string) error {
+	return func(_ *cobra.Command, _ []string) error {
 		fmt.Printf("Creating %s databases is not yet implemented in this CLI\n", dbType)
 		fmt.Printf("Please use the Coolify web interface or API directly\n")
 		return nil

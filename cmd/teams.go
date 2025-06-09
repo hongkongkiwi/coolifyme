@@ -21,7 +21,7 @@ var teamsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all teams",
 	Long:  "List all teams that you have access to.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -169,7 +169,7 @@ var teamsGetCurrentCmd = &cobra.Command{
 	Use:   "get-current",
 	Short: "Get current team",
 	Long:  "Get details of your current team.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -207,7 +207,7 @@ var teamsGetCurrentMembersCmd = &cobra.Command{
 	Use:   "get-current-members",
 	Short: "Get current team members",
 	Long:  "Get all members of your current team.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)

@@ -38,7 +38,7 @@ func deployApplicationCmd() *cobra.Command {
 		Short: "Deploy an application",
 		Long:  "Trigger a deployment for the specified application",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client, err := createClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
@@ -95,7 +95,7 @@ func deployServiceCmd() *cobra.Command {
 		Short: "Deploy a service",
 		Long:  "Trigger a deployment for the specified service (services are deployed by starting them)",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client, err := createClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
@@ -158,11 +158,13 @@ func deployListCmd() *cobra.Command {
 
 			// Create a tabwriter for nicely formatted output
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			defer w.Flush()
+			defer func() {
+				_ = w.Flush()
+			}()
 
 			// Print header
-			fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tBRANCH\tDOMAINS")
-			fmt.Fprintln(w, "----\t----\t------\t------\t-------")
+			_, _ = fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tBRANCH\tDOMAINS")
+			_, _ = fmt.Fprintln(w, "----\t----\t------\t------\t-------")
 
 			// Print deployments (Note: this returns Application objects, not ApplicationDeploymentQueue)
 			for _, deployment := range deployments {
@@ -188,7 +190,7 @@ func deployListCmd() *cobra.Command {
 					domains = *deployment.Fqdn
 				}
 
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 					uuid, name, status, branch, domains)
 			}
 
@@ -207,7 +209,7 @@ func deployListAllCmd() *cobra.Command {
 		Aliases: []string{"all"},
 		Short:   "List all running deployments",
 		Long:    "List all currently running deployments across all applications",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, err := createClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
@@ -237,11 +239,13 @@ func deployListAllCmd() *cobra.Command {
 
 			// Create a tabwriter for nicely formatted output
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			defer w.Flush()
+			defer func() {
+				_ = w.Flush()
+			}()
 
 			// Print header
-			fmt.Fprintln(w, "ID\tAPP NAME\tSTATUS\tCREATED\tSERVER")
-			fmt.Fprintln(w, "--\t--------\t------\t-------\t------")
+			_, _ = fmt.Fprintln(w, "ID\tAPP NAME\tSTATUS\tCREATED\tSERVER")
+			_, _ = fmt.Fprintln(w, "--\t--------\t------\t-------\t------")
 
 			// Print deployments - using correct ApplicationDeploymentQueue fields
 			for _, deployment := range deployments {
@@ -267,7 +271,7 @@ func deployListAllCmd() *cobra.Command {
 					server = *deployment.ServerName
 				}
 
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 					id, appName, status, created, server)
 			}
 
@@ -295,7 +299,7 @@ func deployGetCmd() *cobra.Command {
 			deploymentUUID := args[0]
 			ctx := context.Background()
 
-			deployment, err := client.Deployments().GetByUuid(ctx, deploymentUUID)
+			deployment, err := client.Deployments().GetByUUID(ctx, deploymentUUID)
 			if err != nil {
 				return fmt.Errorf("failed to get deployment: %w", err)
 			}

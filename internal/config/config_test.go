@@ -12,12 +12,16 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Set HOME to our temp directory
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	_ = os.Setenv("HOME", tmpDir)
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
 
 	config, err := LoadConfig()
 	if err != nil {
@@ -39,12 +43,16 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Set HOME to our temp directory
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	_ = os.Setenv("HOME", tmpDir)
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
 
 	// Create and save a config
 	cfg := &Config{
@@ -79,12 +87,16 @@ func TestGetConfigDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
 
 	// Set HOME to our temp directory
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	_ = os.Setenv("HOME", tmpDir)
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
 
 	configDir, err := GetConfigDir()
 	if err != nil {

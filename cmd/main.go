@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/hongkongkiwi/coolifyme/internal/config"
+	"github.com/hongkongkiwi/coolifyme/internal/logger"
 	"github.com/hongkongkiwi/coolifyme/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,8 +18,10 @@ var (
 	profile  string
 
 	// Version information - set by build process
-	Version   = "dev"
+	Version = "dev"
+	// GitCommit is the git commit hash used to build this version
 	GitCommit = "unknown"
+	// BuildDate is the date this version was built
 	BuildDate = "unknown"
 )
 
@@ -33,11 +36,9 @@ services, and infrastructure through Coolify.
 Created by Andy Savage <andy@savage.hk>
 Source: https://github.com/hongkongkiwi/coolifyme`,
 	Version: getVersionString(),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		// Set up logging level based on debug flag
-		if viper.GetBool("debug") {
-			// Enable debug logging if needed
-		}
+		// Debug logging can be configured here if needed
 	},
 }
 
@@ -68,8 +69,8 @@ func init() {
 	rootCmd.PersistentFlags().StringP("token", "t", "", "API token")
 
 	// Bind flags to viper
-	viper.BindPFlag("server_url", rootCmd.PersistentFlags().Lookup("server"))
-	viper.BindPFlag("api_token", rootCmd.PersistentFlags().Lookup("token"))
+	_ = viper.BindPFlag("server_url", rootCmd.PersistentFlags().Lookup("server"))
+	_ = viper.BindPFlag("api_token", rootCmd.PersistentFlags().Lookup("token"))
 }
 
 // initConfig reads in config file and ENV variables if set
@@ -98,6 +99,7 @@ func initConfig() {
 	// If a config file is found, read it in
 	if err := viper.ReadInConfig(); err == nil {
 		// Config file loaded successfully
+		logger.Debug("Configuration file loaded")
 	}
 }
 
@@ -127,7 +129,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
 	Long:  "Print the version number of coolifyme",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		fmt.Println("coolifyme v1.0.0")
 		fmt.Println("Built with ❤️ for the Coolify community")
 	},

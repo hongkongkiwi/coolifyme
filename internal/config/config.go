@@ -1,3 +1,4 @@
+// Package config provides configuration management for the coolifyme CLI tool.
 package config
 
 import (
@@ -15,12 +16,10 @@ type Config struct {
 	Profile  string `mapstructure:"profile"`
 }
 
-var (
-	defaultConfig = Config{
-		BaseURL: "https://app.coolify.io/api/v1",
-		Profile: "default",
-	}
-)
+var defaultConfig = Config{
+	BaseURL: "https://app.coolify.io/api/v1",
+	Profile: "default",
+}
 
 // LoadConfig loads configuration from file and environment variables
 func LoadConfig() (*Config, error) {
@@ -71,7 +70,7 @@ func SaveConfig(config *Config) error {
 	}
 
 	configDir := filepath.Join(home, ".config", "coolifyme")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 

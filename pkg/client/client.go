@@ -1,3 +1,4 @@
+// Package client provides HTTP client functionality for interacting with the Coolify API.
 package client
 
 import (
@@ -446,13 +447,13 @@ func (ac *ApplicationsClient) UpdateEnvs(ctx context.Context, uuidStr string, re
 }
 
 // DeleteEnv deletes an environment variable for an application
-func (ac *ApplicationsClient) DeleteEnv(ctx context.Context, uuidStr string, envUuidStr string) (string, error) {
+func (ac *ApplicationsClient) DeleteEnv(ctx context.Context, uuidStr string, envUUIDStr string) (string, error) {
 	appUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
 		return "", fmt.Errorf("invalid UUID: %w", err)
 	}
 
-	envUUID, err := uuid.Parse(envUuidStr)
+	envUUID, err := uuid.Parse(envUUIDStr)
 	if err != nil {
 		return "", fmt.Errorf("invalid env UUID: %w", err)
 	}
@@ -765,13 +766,13 @@ func (sc *ServicesClient) UpdateEnvs(ctx context.Context, uuidStr string, req co
 }
 
 // DeleteEnv deletes an environment variable for a service
-func (sc *ServicesClient) DeleteEnv(ctx context.Context, uuidStr string, envUuidStr string) (string, error) {
+func (sc *ServicesClient) DeleteEnv(ctx context.Context, uuidStr string, envUUIDStr string) (string, error) {
 	serviceUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
 		return "", fmt.Errorf("invalid UUID: %w", err)
 	}
 
-	envUUID, err := uuid.Parse(envUuidStr)
+	envUUID, err := uuid.Parse(envUUIDStr)
 	if err != nil {
 		return "", fmt.Errorf("invalid env UUID: %w", err)
 	}
@@ -852,8 +853,8 @@ func (dc *DeploymentsClient) DeployService(ctx context.Context, uuidStr string) 
 }
 
 // List returns deployment history for an application
-func (dc *DeploymentsClient) List(ctx context.Context, appUuidStr string) ([]coolify.Application, error) {
-	appUUID, err := uuid.Parse(appUuidStr)
+func (dc *DeploymentsClient) List(ctx context.Context, appUUIDStr string) ([]coolify.Application, error) {
+	appUUID, err := uuid.Parse(appUUIDStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UUID: %w", err)
 	}
@@ -892,8 +893,8 @@ func (dc *DeploymentsClient) ListAll(ctx context.Context) ([]coolify.Application
 	return *resp.JSON200, nil
 }
 
-// GetByUuid returns a deployment by UUID
-func (dc *DeploymentsClient) GetByUuid(ctx context.Context, uuidStr string) (*coolify.ApplicationDeploymentQueue, error) {
+// GetByUUID returns a deployment by UUID
+func (dc *DeploymentsClient) GetByUUID(ctx context.Context, uuidStr string) (*coolify.ApplicationDeploymentQueue, error) {
 	resp, err := dc.client.API.GetDeploymentByUuidWithResponse(ctx, uuidStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)

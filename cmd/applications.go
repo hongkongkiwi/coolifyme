@@ -1,3 +1,4 @@
+// Package main provides the coolifyme CLI application for managing Coolify deployments.
 package main
 
 import (
@@ -26,7 +27,7 @@ var applicationsListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List applications",
 	Long:    "List all applications in your Coolify instance",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -55,11 +56,13 @@ var applicationsListCmd = &cobra.Command{
 
 		// Create a tabwriter for nicely formatted output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() {
+			_ = w.Flush()
+		}()
 
 		// Print header
-		fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tGIT REPOSITORY\tDOMAINS")
-		fmt.Fprintln(w, "----\t----\t------\t--------------\t-------")
+		_, _ = fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tGIT REPOSITORY\tDOMAINS")
+		_, _ = fmt.Fprintln(w, "----\t----\t------\t--------------\t-------")
 
 		// Print applications
 		for _, app := range applications {
@@ -85,7 +88,7 @@ var applicationsListCmd = &cobra.Command{
 				domains = *app.Fqdn
 			}
 
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				uuid, name, status, gitRepo, domains)
 		}
 
@@ -117,9 +120,9 @@ var applicationsGetCmd = &cobra.Command{
 
 		var foundApp *coolify.Application
 
-		for _, app := range applications {
-			if app.Uuid != nil && *app.Uuid == applicationUUID {
-				foundApp = &app
+		for i := range applications {
+			if applications[i].Uuid != nil && *applications[i].Uuid == applicationUUID {
+				foundApp = &applications[i]
 				break
 			}
 		}
@@ -172,7 +175,7 @@ var applicationsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new application",
 	Long:  "Create a new application from a Git repository",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Get flag values
 		repo, _ := cmd.Flags().GetString("repo")
 		branch, _ := cmd.Flags().GetString("branch")
@@ -251,7 +254,7 @@ var applicationsUpdateCmd = &cobra.Command{
 	Short: "Update an application",
 	Long:  "Update an application by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -303,7 +306,7 @@ var applicationsStopCmd = &cobra.Command{
 	Short: "Stop an application",
 	Long:  "Stop an application by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -325,7 +328,7 @@ var applicationsRestartCmd = &cobra.Command{
 	Short: "Restart an application",
 	Long:  "Restart an application by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -483,7 +486,7 @@ var applicationsEnvCreateCmd = &cobra.Command{
 	Short: "Create environment variable",
 	Long:  "Create a new environment variable for an application",
 	Args:  cobra.ExactArgs(3),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -512,7 +515,7 @@ var applicationsEnvUpdateCmd = &cobra.Command{
 	Short: "Update environment variable",
 	Long:  "Update an environment variable for an application",
 	Args:  cobra.ExactArgs(3),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -539,7 +542,7 @@ var applicationsEnvDeleteCmd = &cobra.Command{
 	Short: "Delete environment variable",
 	Long:  "Delete an environment variable for an application",
 	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)

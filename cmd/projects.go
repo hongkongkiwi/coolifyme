@@ -23,7 +23,7 @@ var projectsListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List projects",
 	Long:    "List all projects in your Coolify instance",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -42,11 +42,13 @@ var projectsListCmd = &cobra.Command{
 
 		// Create a tabwriter for nicely formatted output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() {
+			_ = w.Flush()
+		}()
 
 		// Print header
-		fmt.Fprintln(w, "UUID\tNAME\tDESCRIPTION")
-		fmt.Fprintln(w, "----\t----\t-----------")
+		_, _ = fmt.Fprintln(w, "UUID\tNAME\tDESCRIPTION")
+		_, _ = fmt.Fprintln(w, "----\t----\t-----------")
 
 		// Print projects
 		for _, project := range projects {
@@ -64,7 +66,7 @@ var projectsListCmd = &cobra.Command{
 				description = *project.Description
 			}
 
-			fmt.Fprintf(w, "%s\t%s\t%s\n", uuid, name, description)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", uuid, name, description)
 		}
 
 		return nil

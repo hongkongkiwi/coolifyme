@@ -1,3 +1,4 @@
+// Package output provides output formatting utilities for the coolifyme CLI tool.
 package output
 
 import (
@@ -13,9 +14,12 @@ import (
 type Format string
 
 const (
+	// FormatTable represents table output format
 	FormatTable Format = "table"
-	FormatJSON  Format = "json"
-	FormatYAML  Format = "yaml"
+	// FormatJSON represents JSON output format
+	FormatJSON Format = "json"
+	// FormatYAML represents YAML output format
+	FormatYAML Format = "yaml"
 )
 
 // Formatter handles different output formats
@@ -44,21 +48,23 @@ func (f *Formatter) OutputTable(headers []string, rows [][]string) error {
 	}
 
 	w := tabwriter.NewWriter(f.writer, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() {
+		_ = w.Flush()
+	}()
 
 	// Print headers
-	fmt.Fprintln(w, strings.Join(headers, "\t"))
+	_, _ = fmt.Fprintln(w, strings.Join(headers, "\t"))
 
 	// Print separator
 	separators := make([]string, len(headers))
 	for i := range separators {
 		separators[i] = strings.Repeat("-", len(headers[i]))
 	}
-	fmt.Fprintln(w, strings.Join(separators, "\t"))
+	_, _ = fmt.Fprintln(w, strings.Join(separators, "\t"))
 
 	// Print rows
 	for _, row := range rows {
-		fmt.Fprintln(w, strings.Join(row, "\t"))
+		_, _ = fmt.Fprintln(w, strings.Join(row, "\t"))
 	}
 
 	return nil

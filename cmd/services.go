@@ -24,7 +24,7 @@ var servicesListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List services",
 	Long:    "List all services in your Coolify instance",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -53,11 +53,13 @@ var servicesListCmd = &cobra.Command{
 
 		// Create a tabwriter for nicely formatted output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() {
+			_ = w.Flush()
+		}()
 
 		// Print header
-		fmt.Fprintln(w, "UUID\tNAME\tTYPE")
-		fmt.Fprintln(w, "----\t----\t----")
+		_, _ = fmt.Fprintln(w, "UUID\tNAME\tTYPE")
+		_, _ = fmt.Fprintln(w, "----\t----\t----")
 
 		// Print services
 		for _, service := range services {
@@ -75,7 +77,7 @@ var servicesListCmd = &cobra.Command{
 				serviceType = *service.ServiceType
 			}
 
-			fmt.Fprintf(w, "%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
 				uuid, name, serviceType)
 		}
 
@@ -139,7 +141,7 @@ var servicesStartCmd = &cobra.Command{
 	Short: "Start service",
 	Long:  "Start a service by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -164,7 +166,7 @@ var servicesStopCmd = &cobra.Command{
 	Short: "Stop service",
 	Long:  "Stop a service by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -189,7 +191,7 @@ var servicesRestartCmd = &cobra.Command{
 	Short: "Restart service",
 	Long:  "Restart a service by UUID",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)

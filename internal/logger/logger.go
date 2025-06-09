@@ -1,3 +1,4 @@
+// Package logger provides logging utilities for the coolifyme CLI tool.
 package logger
 
 import (

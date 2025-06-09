@@ -19,7 +19,7 @@ var configSetCmd = &cobra.Command{
 	Use:   "set",
 	Short: "Set configuration values",
 	Long:  "Set configuration values like API token and base URL",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			cfg = &config.Config{}
@@ -66,7 +66,7 @@ var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show current configuration",
 	Long:  "Display the current configuration settings",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
@@ -76,7 +76,7 @@ var configShowCmd = &cobra.Command{
 		fmt.Printf("  Profile:   %s\n", cfg.Profile)
 		fmt.Printf("  Base URL:  %s\n", cfg.BaseURL)
 		if cfg.APIToken != "" {
-			fmt.Printf("  API Token: %s...\n", cfg.APIToken[:min(8, len(cfg.APIToken))])
+			fmt.Printf("  API Token: %s...\n", cfg.APIToken[:minInt(8, len(cfg.APIToken))])
 		} else {
 			fmt.Printf("  API Token: (not set)\n")
 		}
@@ -96,7 +96,7 @@ var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize configuration",
 	Long:  "Initialize coolifyme configuration with default values",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		cfg := &config.Config{
 			BaseURL: "https://app.coolify.io/api/v1",
 			Profile: "default",
@@ -126,7 +126,7 @@ func init() {
 	configSetCmd.Flags().String("profile", "", "Set profile name")
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

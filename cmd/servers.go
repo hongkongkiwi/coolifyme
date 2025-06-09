@@ -23,7 +23,7 @@ var serversListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List servers",
 	Long:    "List all servers in your Coolify instance",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -42,11 +42,13 @@ var serversListCmd = &cobra.Command{
 
 		// Create a tabwriter for nicely formatted output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() {
+			_ = w.Flush()
+		}()
 
 		// Print header
-		fmt.Fprintln(w, "UUID\tNAME\tIP\tSTATUS\tDESCRIPTION")
-		fmt.Fprintln(w, "----\t----\t--\t------\t-----------")
+		_, _ = fmt.Fprintln(w, "UUID\tNAME\tIP\tSTATUS\tDESCRIPTION")
+		_, _ = fmt.Fprintln(w, "----\t----\t--\t------\t-----------")
 
 		// Print servers
 		for _, server := range servers {
@@ -74,7 +76,7 @@ var serversListCmd = &cobra.Command{
 				description = *server.Description
 			}
 
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", uuid, name, ip, status, description)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", uuid, name, ip, status, description)
 		}
 
 		return nil

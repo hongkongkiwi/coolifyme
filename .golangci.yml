@@ -1,24 +1,36 @@
 # golangci-lint configuration
 # See https://golangci-lint.run/usage/configuration/
 
-version: 1.5.2
+version: "2"
 run:
   timeout: 5m
   tests: true
 
+formatters:
+  enable:
+    - gofmt            # Standard Go formatting
+    - goimports        # Organize imports
+    - gofumpt          # Stricter gofmt
+
 linters:
   enable:
+    # Core linters (your original set)
     - errcheck
-    - gosimple
     - govet
     - ineffassign
-    - staticcheck
-    - typecheck
+    - staticcheck      # Now includes gosimple
     - unused
-    - gofmt
-    - goimports
     - misspell
     - revive
+    
+    # Additional modern linters for better code quality
+    - gocyclo          # Cyclomatic complexity
+    - gosec            # Security issues
+    - unconvert        # Unnecessary type conversions
+    - goconst          # Repeated strings that could be constants
+    - nolintlint       # Ill-formed or insufficient nolint directives
+    - copyloopvar      # Replaces exportloopref for Go 1.22+
+    - whitespace       # Leading and trailing whitespace
 
 issues:
   max-issues-per-linter: 0
