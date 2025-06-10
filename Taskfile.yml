@@ -11,7 +11,7 @@ tasks:
     desc: Update the OpenAPI spec from the official source
     cmds:
       - echo "Updating Coolify OpenAPI specification..."
-      - curl -o spec/coolify-openapi.yaml https://raw.githubusercontent.com/coollabsio/coolify/next/openapi.yaml
+      - curl -o spec/coolify-openapi.yaml https://raw.githubusercontent.com/coollabsio/coolify/refs/heads/v4.x/openapi.yaml
       - echo "OpenAPI spec updated successfully"
 
   generate:

@@ -3,8 +3,11 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	coolify "github.com/hongkongkiwi/coolifyme/internal/api"
@@ -84,6 +87,16 @@ func (c *Client) Deployments() *DeploymentsClient {
 // Databases returns a databases client
 func (c *Client) Databases() *DatabasesClient {
 	return &DatabasesClient{client: c}
+}
+
+// PrivateKeys returns a private keys client
+func (c *Client) PrivateKeys() *PrivateKeysClient {
+	return &PrivateKeysClient{client: c}
+}
+
+// Resources returns a resources client
+func (c *Client) Resources() *ResourcesClient {
+	return &ResourcesClient{client: c}
 }
 
 // Teams returns a teams client
@@ -275,22 +288,34 @@ func (ac *ApplicationsClient) CreateDockerCompose(ctx context.Context, req cooli
 }
 
 // Start starts an application
-func (ac *ApplicationsClient) Start(ctx context.Context, uuidStr string, options *coolify.StartApplicationByUuidParams) error {
+func (ac *ApplicationsClient) Start(ctx context.Context, uuidStr string, options *coolify.StartApplicationByUuidParams) (*StartResponse, error) {
 	appUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		return fmt.Errorf("invalid UUID: %w", err)
+		return nil, fmt.Errorf("invalid UUID: %w", err)
 	}
 
 	resp, err := ac.client.API.StartApplicationByUuidWithResponse(ctx, appUUID, options)
 	if err != nil {
-		return fmt.Errorf("failed to start application: %w", err)
+		return nil, fmt.Errorf("failed to start application: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("API error: %s", resp.Status())
+		return nil, fmt.Errorf("API error: %s", resp.Status())
 	}
 
-	return nil
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	startResponse := &StartResponse{}
+	if resp.JSON200.Message != nil {
+		startResponse.Message = *resp.JSON200.Message
+	}
+	if resp.JSON200.DeploymentUuid != nil {
+		startResponse.DeploymentUUID = *resp.JSON200.DeploymentUuid
+	}
+
+	return startResponse, nil
 }
 
 // Stop stops an application
@@ -313,22 +338,34 @@ func (ac *ApplicationsClient) Stop(ctx context.Context, uuidStr string) error {
 }
 
 // Restart restarts an application
-func (ac *ApplicationsClient) Restart(ctx context.Context, uuidStr string) error {
+func (ac *ApplicationsClient) Restart(ctx context.Context, uuidStr string) (*RestartResponse, error) {
 	appUUID, err := uuid.Parse(uuidStr)
 	if err != nil {
-		return fmt.Errorf("invalid UUID: %w", err)
+		return nil, fmt.Errorf("invalid UUID: %w", err)
 	}
 
 	resp, err := ac.client.API.RestartApplicationByUuidWithResponse(ctx, appUUID)
 	if err != nil {
-		return fmt.Errorf("failed to restart application: %w", err)
+		return nil, fmt.Errorf("failed to restart application: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("API error: %s", resp.Status())
+		return nil, fmt.Errorf("API error: %s", resp.Status())
 	}
 
-	return nil
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	restartResponse := &RestartResponse{}
+	if resp.JSON200.Message != nil {
+		restartResponse.Message = *resp.JSON200.Message
+	}
+	if resp.JSON200.DeploymentUuid != nil {
+		restartResponse.DeploymentUUID = *resp.JSON200.DeploymentUuid
+	}
+
+	return restartResponse, nil
 }
 
 // GetLogs gets application logs
@@ -497,6 +534,114 @@ func (pc *ProjectsClient) List(ctx context.Context) ([]coolify.Project, error) {
 	return *resp.JSON200, nil
 }
 
+// Create creates a new project
+func (pc *ProjectsClient) Create(ctx context.Context, req coolify.CreateProjectJSONRequestBody) (string, error) {
+	resp, err := pc.client.API.CreateProjectWithResponse(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create project: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil || resp.JSON201.Uuid == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON201.Uuid, nil
+}
+
+// Get returns a project by UUID
+func (pc *ProjectsClient) Get(ctx context.Context, uuidStr string) (*coolify.Project, error) {
+	resp, err := pc.client.API.GetProjectByUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return resp.JSON200, nil
+}
+
+// Delete deletes a project by UUID
+func (pc *ProjectsClient) Delete(ctx context.Context, uuidStr string) error {
+	projectUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %w", err)
+	}
+
+	resp, err := pc.client.API.DeleteProjectByUuidWithResponse(ctx, projectUUID)
+	if err != nil {
+		return fmt.Errorf("failed to delete project: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	return nil
+}
+
+// Update updates a project by UUID
+func (pc *ProjectsClient) Update(ctx context.Context, uuidStr string, req coolify.UpdateProjectByUuidJSONRequestBody) (*coolify.Project, error) {
+	projectUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %w", err)
+	}
+
+	resp, err := pc.client.API.UpdateProjectByUuidWithResponse(ctx, projectUUID, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	// Convert the response to a full Project object
+	project := &coolify.Project{}
+	if resp.JSON201.Uuid != nil {
+		project.Uuid = resp.JSON201.Uuid
+	}
+	if resp.JSON201.Name != nil {
+		project.Name = resp.JSON201.Name
+	}
+	if resp.JSON201.Description != nil {
+		project.Description = resp.JSON201.Description
+	}
+
+	return project, nil
+}
+
+// GetEnvironment returns an environment by name or UUID within a project
+func (pc *ProjectsClient) GetEnvironment(ctx context.Context, projectUUID, environmentNameOrUUID string) (*coolify.Environment, error) {
+	resp, err := pc.client.API.GetEnvironmentByNameOrUuidWithResponse(ctx, projectUUID, environmentNameOrUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return resp.JSON200, nil
+}
+
 // ServersClient handles server-related operations
 type ServersClient struct {
 	client *Client
@@ -518,6 +663,145 @@ func (sc *ServersClient) List(ctx context.Context) ([]coolify.Server, error) {
 	}
 
 	return *resp.JSON200, nil
+}
+
+// Create creates a new server
+func (sc *ServersClient) Create(ctx context.Context, req coolify.CreateServerJSONRequestBody) (string, error) {
+	resp, err := sc.client.API.CreateServerWithResponse(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create server: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil || resp.JSON201.Uuid == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON201.Uuid, nil
+}
+
+// Get returns a server by UUID
+func (sc *ServersClient) Get(ctx context.Context, uuidStr string) (*coolify.Server, error) {
+	resp, err := sc.client.API.GetServerByUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return resp.JSON200, nil
+}
+
+// Delete deletes a server by UUID
+func (sc *ServersClient) Delete(ctx context.Context, uuidStr string) error {
+	serverUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %w", err)
+	}
+
+	resp, err := sc.client.API.DeleteServerByUuidWithResponse(ctx, serverUUID)
+	if err != nil {
+		return fmt.Errorf("failed to delete server: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	return nil
+}
+
+// Update updates a server by UUID
+func (sc *ServersClient) Update(ctx context.Context, uuidStr string, req coolify.UpdateServerByUuidJSONRequestBody) (*coolify.Server, error) {
+	resp, err := sc.client.API.UpdateServerByUuidWithResponse(ctx, uuidStr, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update server: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return resp.JSON201, nil
+}
+
+// GetResources returns resources for a server by UUID (returns as JSON string per API spec)
+func (sc *ServersClient) GetResources(ctx context.Context, uuidStr string) (string, error) {
+	resp, err := sc.client.API.GetResourcesByServerUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return "", fmt.Errorf("failed to get server resources: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	// Convert to JSON string for consistent API interface
+	jsonBytes, err := json.Marshal(*resp.JSON200)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return string(jsonBytes), nil
+}
+
+// GetDomains returns domains for a server by UUID (returns as JSON string per API spec)
+func (sc *ServersClient) GetDomains(ctx context.Context, uuidStr string) (string, error) {
+	resp, err := sc.client.API.GetDomainsByServerUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return "", fmt.Errorf("failed to get server domains: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	// Convert to JSON string for consistent API interface
+	jsonBytes, err := json.Marshal(*resp.JSON200)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return string(jsonBytes), nil
+}
+
+// Validate validates a server by UUID
+func (sc *ServersClient) Validate(ctx context.Context, uuidStr string) (string, error) {
+	resp, err := sc.client.API.ValidateServerByUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate server: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil || resp.JSON201.Message == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON201.Message, nil
 }
 
 // ServicesClient handles service-related operations
@@ -805,8 +1089,37 @@ type DeployApplicationOptions struct {
 	PR     *int
 }
 
+// DeploymentResult contains information about a triggered deployment
+type DeploymentResult struct {
+	Message        string `json:"message"`
+	ResourceUUID   string `json:"resource_uuid"`
+	DeploymentUUID string `json:"deployment_uuid"`
+}
+
+// DeployResponse contains the response from a deployment request
+type DeployResponse struct {
+	Deployments []DeploymentResult `json:"deployments"`
+}
+
+// StartResponse represents the response from starting an application
+type StartResponse struct {
+	Message        string `json:"message"`
+	DeploymentUUID string `json:"deployment_uuid"`
+}
+
+// RestartResponse represents the response from restarting an application
+type RestartResponse struct {
+	Message        string `json:"message"`
+	DeploymentUUID string `json:"deployment_uuid"`
+}
+
+// StopResponse represents the response from stopping an application
+type StopResponse struct {
+	Message string `json:"message"`
+}
+
 // DeployApplication deploys an application by UUID
-func (dc *DeploymentsClient) DeployApplication(ctx context.Context, uuidStr string, force bool, branch string) error {
+func (dc *DeploymentsClient) DeployApplication(ctx context.Context, uuidStr string, force bool, branch string) (*DeployResponse, error) {
 	return dc.DeployApplicationWithOptions(ctx, uuidStr, &DeployApplicationOptions{
 		Force:  force,
 		Branch: branch,
@@ -814,7 +1127,7 @@ func (dc *DeploymentsClient) DeployApplication(ctx context.Context, uuidStr stri
 }
 
 // DeployApplicationWithOptions deploys an application with advanced options
-func (dc *DeploymentsClient) DeployApplicationWithOptions(ctx context.Context, uuidStr string, options *DeployApplicationOptions) error {
+func (dc *DeploymentsClient) DeployApplicationWithOptions(ctx context.Context, uuidStr string, options *DeployApplicationOptions) (*DeployResponse, error) {
 	params := &coolify.DeployByTagOrUuidParams{
 		Uuid:  &uuidStr,
 		Force: &options.Force,
@@ -822,7 +1135,7 @@ func (dc *DeploymentsClient) DeployApplicationWithOptions(ctx context.Context, u
 
 	// Branch and PR are mutually exclusive
 	if options.Branch != "" && options.PR != nil {
-		return fmt.Errorf("cannot specify both branch and PR - they are mutually exclusive")
+		return nil, fmt.Errorf("cannot specify both branch and PR - they are mutually exclusive")
 	}
 
 	// If branch is specified, we need to deploy from a specific tag/branch
@@ -837,14 +1150,37 @@ func (dc *DeploymentsClient) DeployApplicationWithOptions(ctx context.Context, u
 
 	resp, err := dc.client.API.DeployByTagOrUuidWithResponse(ctx, params)
 	if err != nil {
-		return fmt.Errorf("failed to deploy application: %w", err)
+		return nil, fmt.Errorf("failed to deploy application: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("API error: %s", resp.Status())
+		return nil, fmt.Errorf("API error: %s", resp.Status())
 	}
 
-	return nil
+	if resp.JSON200 == nil || resp.JSON200.Deployments == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	// Convert the response to our struct
+	result := &DeployResponse{
+		Deployments: make([]DeploymentResult, 0, len(*resp.JSON200.Deployments)),
+	}
+
+	for _, deployment := range *resp.JSON200.Deployments {
+		deploymentResult := DeploymentResult{}
+		if deployment.Message != nil {
+			deploymentResult.Message = *deployment.Message
+		}
+		if deployment.ResourceUuid != nil {
+			deploymentResult.ResourceUUID = *deployment.ResourceUuid
+		}
+		if deployment.DeploymentUuid != nil {
+			deploymentResult.DeploymentUUID = *deployment.DeploymentUuid
+		}
+		result.Deployments = append(result.Deployments, deploymentResult)
+	}
+
+	return result, nil
 }
 
 // DeployService deploys a service by starting it (services use start/restart for deployment)
@@ -909,6 +1245,141 @@ func (dc *DeploymentsClient) GetByUUID(ctx context.Context, uuidStr string) (*co
 	}
 
 	return resp.JSON200, nil
+}
+
+// Watch monitors a deployment until it completes or fails
+func (dc *DeploymentsClient) Watch(ctx context.Context, uuidStr string) error {
+	fmt.Printf("🔄 Monitoring deployment %s...\n", uuidStr)
+
+	for {
+		deployment, err := dc.GetByUUID(ctx, uuidStr)
+		if err != nil {
+			return fmt.Errorf("failed to get deployment status: %w", err)
+		}
+
+		if deployment.Status == nil {
+			return fmt.Errorf("deployment status is unknown")
+		}
+
+		status := *deployment.Status
+		fmt.Printf("📊 Status: %s\n", status)
+
+		// Check if deployment is finished (success or failure)
+		switch status {
+		case "finished", "success", "completed":
+			fmt.Printf("✅ Deployment completed successfully!\n")
+			return nil
+		case "failed", "error", "cancelled":
+			fmt.Printf("❌ Deployment failed with status: %s\n", status)
+			if deployment.Logs != nil && *deployment.Logs != "" {
+				fmt.Printf("📝 Recent logs:\n%s\n", *deployment.Logs)
+			}
+			return fmt.Errorf("deployment failed")
+		case "running", "in_progress", "building", "deploying":
+			// Continue monitoring
+			fmt.Printf("⏳ Deployment in progress...\n")
+		default:
+			fmt.Printf("ℹ️  Unknown status: %s\n", status)
+		}
+
+		// Wait before next check
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+			// Continue loop
+		}
+	}
+}
+
+// DeployMultiple deploys multiple applications by their UUIDs
+func (dc *DeploymentsClient) DeployMultiple(ctx context.Context, uuids []string, options *DeployApplicationOptions) (*DeployResponse, error) {
+	if len(uuids) == 0 {
+		return nil, fmt.Errorf("no UUIDs provided")
+	}
+
+	// Join UUIDs with commas as the API supports comma-separated lists
+	uuidList := strings.Join(uuids, ",")
+
+	params := &coolify.DeployByTagOrUuidParams{
+		Uuid:  &uuidList,
+		Force: &options.Force,
+	}
+
+	// If branch is specified, we need to deploy from a specific tag/branch
+	if options.Branch != "" {
+		params.Tag = &options.Branch
+	}
+
+	// If PR is specified, deploy from a specific pull request
+	if options.PR != nil {
+		params.Pr = options.PR
+	}
+
+	resp, err := dc.client.API.DeployByTagOrUuidWithResponse(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy applications: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil || resp.JSON200.Deployments == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	// Convert the response to our struct
+	result := &DeployResponse{
+		Deployments: make([]DeploymentResult, 0, len(*resp.JSON200.Deployments)),
+	}
+
+	for _, deployment := range *resp.JSON200.Deployments {
+		deploymentResult := DeploymentResult{}
+		if deployment.Message != nil {
+			deploymentResult.Message = *deployment.Message
+		}
+		if deployment.ResourceUuid != nil {
+			deploymentResult.ResourceUUID = *deployment.ResourceUuid
+		}
+		if deployment.DeploymentUuid != nil {
+			deploymentResult.DeploymentUUID = *deployment.DeploymentUuid
+		}
+		result.Deployments = append(result.Deployments, deploymentResult)
+	}
+
+	return result, nil
+}
+
+// ListWithPagination returns deployment history for an application with pagination support
+func (dc *DeploymentsClient) ListWithPagination(ctx context.Context, appUUIDStr string, skip, take int) ([]coolify.Application, error) {
+	appUUID, err := uuid.Parse(appUUIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %w", err)
+	}
+
+	params := &coolify.ListDeploymentsByAppUuidParams{}
+	if skip > 0 {
+		params.Skip = &skip
+	}
+	if take > 0 {
+		params.Take = &take
+	}
+
+	resp, err := dc.client.API.ListDeploymentsByAppUuidWithResponse(ctx, appUUID, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list deployments: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON200, nil
 }
 
 // DatabasesClient handles database-related operations
@@ -1334,4 +1805,119 @@ func (sc *SystemClient) DisableAPI(ctx context.Context) (string, error) {
 	}
 
 	return *resp.JSON200.Message, nil
+}
+
+// PrivateKeysClient handles private key-related operations
+type PrivateKeysClient struct {
+	client *Client
+}
+
+// List returns all private keys
+func (pkc *PrivateKeysClient) List(ctx context.Context) ([]coolify.PrivateKey, error) {
+	resp, err := pkc.client.API.ListPrivateKeysWithResponse(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list private keys: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON200, nil
+}
+
+// Create creates a new private key
+func (pkc *PrivateKeysClient) Create(ctx context.Context, req coolify.CreatePrivateKeyJSONRequestBody) (string, error) {
+	resp, err := pkc.client.API.CreatePrivateKeyWithResponse(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create private key: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil || resp.JSON201.Uuid == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON201.Uuid, nil
+}
+
+// Get returns a private key by UUID
+func (pkc *PrivateKeysClient) Get(ctx context.Context, uuidStr string) (*coolify.PrivateKey, error) {
+	resp, err := pkc.client.API.GetPrivateKeyByUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("empty response body")
+	}
+
+	return resp.JSON200, nil
+}
+
+// Update updates a private key
+func (pkc *PrivateKeysClient) Update(ctx context.Context, req coolify.UpdatePrivateKeyJSONRequestBody) (string, error) {
+	resp, err := pkc.client.API.UpdatePrivateKeyWithResponse(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to update private key: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	if resp.JSON201 == nil || resp.JSON201.Uuid == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return *resp.JSON201.Uuid, nil
+}
+
+// Delete deletes a private key by UUID
+func (pkc *PrivateKeysClient) Delete(ctx context.Context, uuidStr string) error {
+	resp, err := pkc.client.API.DeletePrivateKeyByUuidWithResponse(ctx, uuidStr)
+	if err != nil {
+		return fmt.Errorf("failed to delete private key: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	return nil
+}
+
+// ResourcesClient handles resource-related operations
+type ResourcesClient struct {
+	client *Client
+}
+
+// List returns all resources
+func (rc *ResourcesClient) List(ctx context.Context) (string, error) {
+	resp, err := rc.client.API.ListResourcesWithResponse(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("API error: %s", resp.Status())
+	}
+
+	// Note: API returns string according to OpenAPI spec
+	if resp.JSON200 == nil {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	return string(*resp.JSON200), nil
 }

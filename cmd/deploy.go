@@ -7,6 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
+	coolify "github.com/hongkongkiwi/coolifyme/internal/api"
 	clientpkg "github.com/hongkongkiwi/coolifyme/pkg/client"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,9 @@ func deployCmd() *cobra.Command {
 	cmd.AddCommand(deployListCmd())
 	cmd.AddCommand(deployListAllCmd())
 	cmd.AddCommand(deployGetCmd())
+	cmd.AddCommand(deployWatchCmd())
+	cmd.AddCommand(deployLogsCmd())
+	cmd.AddCommand(deployMultipleCmd())
 
 	return cmd
 }
@@ -71,12 +75,23 @@ func deployApplicationCmd() *cobra.Command {
 				options.PR = &pr
 			}
 
-			err = client.Deployments().DeployApplicationWithOptions(ctx, applicationUUID, options)
+			deployResponse, err := client.Deployments().DeployApplicationWithOptions(ctx, applicationUUID, options)
 			if err != nil {
 				return fmt.Errorf("failed to deploy application: %w", err)
 			}
 
-			fmt.Printf("✅ Application deployment triggered successfully for %s\n", applicationUUID)
+			if deployResponse != nil && len(deployResponse.Deployments) > 0 {
+				fmt.Printf("✅ Application deployment triggered successfully for %s\n", applicationUUID)
+				for _, deployment := range deployResponse.Deployments {
+					fmt.Printf("   📦 Deployment UUID: %s\n", deployment.DeploymentUUID)
+					fmt.Printf("   🎯 Resource UUID:   %s\n", deployment.ResourceUUID)
+					if deployment.Message != "" {
+						fmt.Printf("   📝 Message:         %s\n", deployment.Message)
+					}
+				}
+			} else {
+				fmt.Printf("✅ Application deployment triggered successfully for %s\n", applicationUUID)
+			}
 
 			return nil
 		},
@@ -136,7 +151,15 @@ func deployListCmd() *cobra.Command {
 			appUUID := args[0]
 			ctx := context.Background()
 
-			deployments, err := client.Deployments().List(ctx, appUUID)
+			skip, _ := cmd.Flags().GetInt("skip")
+			take, _ := cmd.Flags().GetInt("take")
+
+			var deployments []coolify.Application
+			if skip > 0 || take > 0 {
+				deployments, err = client.Deployments().ListWithPagination(ctx, appUUID, skip, take)
+			} else {
+				deployments, err = client.Deployments().List(ctx, appUUID)
+			}
 			if err != nil {
 				return fmt.Errorf("failed to list deployments: %w", err)
 			}
@@ -199,6 +222,8 @@ func deployListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().Int("skip", 0, "Number of records to skip (pagination)")
+	cmd.Flags().Int("take", 10, "Number of records to take (pagination)")
 
 	return cmd
 }
@@ -280,6 +305,7 @@ func deployListAllCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("logs", "l", false, "Show deployment logs")
 
 	return cmd
 }
@@ -320,6 +346,9 @@ func deployGetCmd() *cobra.Command {
 			if deployment.Id != nil {
 				fmt.Printf("ID:                 %d\n", *deployment.Id)
 			}
+			if deployment.DeploymentUuid != nil {
+				fmt.Printf("Deployment UUID:    %s\n", *deployment.DeploymentUuid)
+			}
 			if deployment.ApplicationId != nil {
 				fmt.Printf("Application ID:     %s\n", *deployment.ApplicationId)
 			}
@@ -341,12 +370,171 @@ func deployGetCmd() *cobra.Command {
 			if deployment.CommitMessage != nil {
 				fmt.Printf("Commit Message:     %s\n", *deployment.CommitMessage)
 			}
+			if deployment.ServerName != nil {
+				fmt.Printf("Server:             %s\n", *deployment.ServerName)
+			}
+			if deployment.DeploymentUrl != nil && *deployment.DeploymentUrl != "" {
+				fmt.Printf("Deployment URL:     %s\n", *deployment.DeploymentUrl)
+			}
+			if deployment.ForceRebuild != nil {
+				fmt.Printf("Force Rebuild:      %t\n", *deployment.ForceRebuild)
+			}
+			if deployment.IsWebhook != nil {
+				fmt.Printf("Triggered by Webhook: %t\n", *deployment.IsWebhook)
+			}
+			if deployment.IsApi != nil {
+				fmt.Printf("Triggered by API:   %t\n", *deployment.IsApi)
+			}
+			if deployment.PullRequestId != nil && *deployment.PullRequestId > 0 {
+				fmt.Printf("Pull Request ID:    %d\n", *deployment.PullRequestId)
+			}
+
+			// Show logs if available and not empty
+			showLogs, _ := cmd.Flags().GetBool("logs")
+			if showLogs && deployment.Logs != nil && *deployment.Logs != "" {
+				fmt.Printf("\nDeployment Logs:\n")
+				fmt.Printf("===============\n")
+				fmt.Printf("%s\n", *deployment.Logs)
+			}
 
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+
+	return cmd
+}
+
+func deployWatchCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "watch [deployment-uuid]",
+		Short: "Watch deployment logs",
+		Long:  "Watch the logs for a specific deployment",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			client, err := createClient()
+			if err != nil {
+				return fmt.Errorf("failed to create client: %w", err)
+			}
+
+			deploymentUUID := args[0]
+			ctx := context.Background()
+
+			fmt.Printf("Watching deployment logs for %s\n", deploymentUUID)
+
+			err = client.Deployments().Watch(ctx, deploymentUUID)
+			if err != nil {
+				return fmt.Errorf("failed to watch deployment logs: %w", err)
+			}
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func deployLogsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "logs [deployment-uuid]",
+		Short: "Get deployment logs",
+		Long:  "Get the logs for a specific deployment",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := createClient()
+			if err != nil {
+				return fmt.Errorf("failed to create client: %w", err)
+			}
+
+			deploymentUUID := args[0]
+			ctx := context.Background()
+
+			deployment, err := client.Deployments().GetByUUID(ctx, deploymentUUID)
+			if err != nil {
+				return fmt.Errorf("failed to get deployment: %w", err)
+			}
+
+			logs := ""
+			if deployment.Logs != nil {
+				logs = *deployment.Logs
+			}
+
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			if jsonOutput {
+				output, err := json.MarshalIndent(logs, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal JSON: %w", err)
+				}
+				fmt.Println(string(output))
+				return nil
+			}
+
+			fmt.Println(logs)
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+
+	return cmd
+}
+
+func deployMultipleCmd() *cobra.Command {
+	var force bool
+	var branch string
+
+	cmd := &cobra.Command{
+		Use:   "multiple [uuid1] [uuid2]...",
+		Short: "Deploy multiple applications or services",
+		Long:  "Trigger deployments for multiple applications or services",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			client, err := createClient()
+			if err != nil {
+				return fmt.Errorf("failed to create client: %w", err)
+			}
+
+			ctx := context.Background()
+
+			fmt.Printf("🚀 Starting deployments for %d applications/services\n", len(args))
+			if branch != "" {
+				fmt.Printf("   Branch: %s\n", branch)
+			}
+			if force {
+				fmt.Printf("   Force deployment: enabled\n")
+			}
+
+			// Use the multiple deployment method which supports comma-separated UUIDs
+			options := &clientpkg.DeployApplicationOptions{
+				Force:  force,
+				Branch: branch,
+			}
+
+			deployResponse, err := client.Deployments().DeployMultiple(ctx, args, options)
+			if err != nil {
+				return fmt.Errorf("failed to deploy multiple applications: %w", err)
+			}
+
+			if deployResponse != nil && len(deployResponse.Deployments) > 0 {
+				fmt.Printf("✅ Deployments triggered successfully for %d applications/services\n", len(args))
+				for i, deployment := range deployResponse.Deployments {
+					fmt.Printf("   %d. 📦 Deployment UUID: %s\n", i+1, deployment.DeploymentUUID)
+					fmt.Printf("      🎯 Resource UUID:   %s\n", deployment.ResourceUUID)
+					if deployment.Message != "" {
+						fmt.Printf("      �� Message:         %s\n", deployment.Message)
+					}
+				}
+			} else {
+				fmt.Printf("✅ Deployments triggered successfully for %d applications/services\n", len(args))
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force deployment even if one is already running")
+	cmd.Flags().StringVarP(&branch, "branch", "b", "", "Deploy from specific branch/tag")
 
 	return cmd
 }

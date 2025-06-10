@@ -62,6 +62,9 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(teamsCmd)
+	rootCmd.AddCommand(privateKeysCmd)
+	rootCmd.AddCommand(resourcesCmd)
+	rootCmd.AddCommand(deploymentsCmd)
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ~/.config/coolifyme/config.yaml)")

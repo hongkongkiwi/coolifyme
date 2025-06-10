@@ -111,24 +111,10 @@ var applicationsGetCmd = &cobra.Command{
 		ctx := context.Background()
 		applicationUUID := args[0]
 
-		// Get application details by fetching all applications and filtering
-		// This is a workaround since there's no direct get-by-uuid endpoint for applications
-		applications, err := client.Applications().List(ctx)
+		// Get application details directly using the UUID endpoint
+		foundApp, err := client.Applications().Get(ctx, applicationUUID)
 		if err != nil {
-			return fmt.Errorf("failed to list applications: %w", err)
-		}
-
-		var foundApp *coolify.Application
-
-		for i := range applications {
-			if applications[i].Uuid != nil && *applications[i].Uuid == applicationUUID {
-				foundApp = &applications[i]
-				break
-			}
-		}
-
-		if foundApp == nil {
-			return fmt.Errorf("application with UUID %s not found", applicationUUID)
+			return fmt.Errorf("failed to get application: %w", err)
 		}
 
 		jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -290,12 +276,22 @@ var applicationsStartCmd = &cobra.Command{
 			Force: &force,
 		}
 
-		err = client.Applications().Start(context.Background(), args[0], options)
+		startResponse, err := client.Applications().Start(context.Background(), args[0], options)
 		if err != nil {
 			return fmt.Errorf("failed to start application: %w", err)
 		}
 
-		fmt.Printf("Application %s started successfully\n", args[0])
+		if startResponse != nil {
+			fmt.Printf("✅ Application %s started successfully\n", args[0])
+			if startResponse.DeploymentUUID != "" {
+				fmt.Printf("   📦 Deployment UUID: %s\n", startResponse.DeploymentUUID)
+			}
+			if startResponse.Message != "" {
+				fmt.Printf("   💬 Message: %s\n", startResponse.Message)
+			}
+		} else {
+			fmt.Printf("Application %s started successfully\n", args[0])
+		}
 		return nil
 	},
 }
@@ -334,12 +330,22 @@ var applicationsRestartCmd = &cobra.Command{
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 
-		err = client.Applications().Restart(context.Background(), args[0])
+		restartResponse, err := client.Applications().Restart(context.Background(), args[0])
 		if err != nil {
 			return fmt.Errorf("failed to restart application: %w", err)
 		}
 
-		fmt.Printf("Application %s restarted successfully\n", args[0])
+		if restartResponse != nil {
+			fmt.Printf("✅ Application %s restarted successfully\n", args[0])
+			if restartResponse.DeploymentUUID != "" {
+				fmt.Printf("   📦 Deployment UUID: %s\n", restartResponse.DeploymentUUID)
+			}
+			if restartResponse.Message != "" {
+				fmt.Printf("   💬 Message: %s\n", restartResponse.Message)
+			}
+		} else {
+			fmt.Printf("Application %s restarted successfully\n", args[0])
+		}
 		return nil
 	},
 }

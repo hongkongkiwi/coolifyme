@@ -1,4 +1,5 @@
 # Binaries for programs and plugins
+/coolifyme
 *.exe
 *.exe~
 *.dll
