@@ -20,13 +20,15 @@ A powerful and feature-rich command-line interface for the [Coolify](https://coo
 📦 **Easy Installation**: Single binary with no dependencies
 
 ### Industry-Standard CLI Features
+🔍 **Search & Filtering**: Universal search across resources with wildcard patterns and advanced filtering  
+⏱️ **Timeouts & Retry Logic**: Global timeout configuration with exponential backoff retry logic  
+🎨 **Advanced Output Formatting**: Multiple formats (JSON, YAML, CSV) with custom templates and sorting  
+🔄 **Rollback Operations**: Safe rollbacks with deployment history and dry-run support  
 🎯 **Interactive Wizards**: Guided setup for first-time configuration and complex operations  
 ⚡ **Bulk Operations**: Mass operations with concurrency control and dry-run support  
 📊 **Monitoring & Health Checks**: Real-time status monitoring and system health verification  
 🔗 **Command Aliases**: Quick shortcuts for frequently used commands  
-🔄 **Auto-Updates**: Smart update detection with Homebrew integration  
-🏥 **Health Monitoring**: Comprehensive system health checks and status overviews  
-⏱️ **Real-time Watching**: Live monitoring with auto-refresh capabilities
+🚀 **Auto-Updates**: Smart update detection with Homebrew integration
 
 ## Table of Contents
 
@@ -51,11 +53,15 @@ A powerful and feature-rich command-line interface for the [Coolify](https://coo
     - [Services](#services)
     - [Databases](#databases)
   - [Industry-Standard CLI Features](#industry-standard-cli-features-1)
-    - [Interactive Wizards](#interactive-wizards)
-    - [Bulk Operations](#bulk-operations)
-    - [Monitoring \& Health Checks](#monitoring--health-checks)
-    - [Command Aliases](#command-aliases)
-    - [Auto-Updates](#auto-updates)
+    - [Search \& Filtering System 🔍](#search--filtering-system-)
+    - [Global Timeouts \& Retry Logic ⏱️](#global-timeouts--retry-logic-️)
+    - [Advanced Output Formatting 🎨](#advanced-output-formatting-)
+    - [Rollback Operations 🔄](#rollback-operations-)
+    - [Interactive Wizards 🧙](#interactive-wizards-)
+    - [Bulk Operations 📦](#bulk-operations-)
+    - [Monitoring \& Health Checks 📊](#monitoring--health-checks-)
+    - [Command Aliases 🚀](#command-aliases-)
+    - [Auto-Updates 🔄](#auto-updates-)
     - [Environment Variables Management](#environment-variables-management)
   - [Shell Completion](#shell-completion)
     - [Bash](#bash)
@@ -382,9 +388,116 @@ coolifyme db delete <uuid> --force
 
 ## Industry-Standard CLI Features
 
-### Interactive Wizards
+### Search & Filtering System 🔍
 
-coolifyme provides guided interactive wizards for complex operations:
+Universal search capabilities across all Coolify resources:
+
+```bash
+# Search across all resources
+coolifyme search "my-app"
+coolifyme search "prod-*" --type applications
+coolifyme search "nginx" --status running
+
+# Advanced filtering
+coolifyme find --name "api-*" --status running --type services
+coolifyme find --status failed --type applications
+
+# Output control
+coolifyme search "web" --json --limit 10
+coolifyme search "database" --case-sensitive
+```
+
+**Features:**
+- Cross-resource search: applications, services, servers, databases
+- Wildcard pattern support (`app-*`, `prod-*`)
+- Case-sensitive and case-insensitive modes
+- Status and tag filtering with result limiting
+- JSON output for scripting and automation
+
+### Global Timeouts & Retry Logic ⏱️
+
+Robust timeout and retry configuration for API operations:
+
+```bash
+# Configure global timeouts
+coolifyme timeout set --timeout 60s --retry 5 --retry-delay 2s
+coolifyme timeout show
+
+# Per-command overrides
+coolifyme applications list --timeout 30s --retry 3
+coolifyme deploy app uuid --timeout 300s --retry 1
+```
+
+**Features:**
+- Request timeout configuration (default: 30s)
+- Retry count with exponential backoff (default: 3 retries)
+- Customizable retry delays and maximum backoff
+- Per-command timeout overrides
+- Smart retry logic with jitter to prevent thundering herd
+
+### Advanced Output Formatting 🎨
+
+Powerful output formatting for different use cases:
+
+```bash
+# Multiple output formats
+coolifyme apps list --output json
+coolifyme apps list --output yaml
+coolifyme apps list --output csv
+coolifyme apps list --output wide
+
+# Custom table columns
+coolifyme apps list --output "table(name,status,url)"
+coolifyme apps list --columns name,status,url
+
+# Template formatting
+coolifyme apps list --output "custom({name} is {status})"
+
+# Sorting and filtering
+coolifyme apps list --sort-by name --sort-reverse
+coolifyme apps list --no-headers --show-kind
+
+# Examples and help
+coolifyme format examples
+```
+
+**Supported Formats:**
+- **JSON/YAML**: Machine-readable for automation
+- **Table**: Human-readable with column control
+- **CSV**: Spreadsheet integration
+- **Custom**: Template-based output formatting
+- **Wide**: Extended information display
+- **Name-only**: Just resource names
+
+### Rollback Operations 🔄
+
+Safe rollback capabilities with history tracking:
+
+```bash
+# Application rollbacks
+coolifyme rollback app <uuid> --list                    # Show available versions
+coolifyme rollback app <uuid> --to-commit abc123        # Rollback to git commit
+coolifyme rollback app <uuid> --to-version v1.2.3       # Rollback to version
+coolifyme rollback app <uuid> --to-commit abc123 --dry-run  # Preview rollback
+
+# Deployment history
+coolifyme rollback history <uuid> --limit 20
+coolifyme rollback history <uuid> --json
+
+# Service rollbacks
+coolifyme rollback service <uuid> --to-version v1.1.0
+```
+
+**Features:**
+- Git commit-based and version-based rollbacks
+- Deployment history tracking and visualization
+- Dry-run mode for safe previewing
+- Force rollback with `--force` flag
+- Confirmation prompts for safety
+
+### Interactive Wizards 🧙
+
+Guided setup and configuration wizards:
 
 ```bash
 # First-time setup wizard
@@ -397,9 +510,9 @@ coolifyme applications create-wizard
 coolifyme servers add-wizard
 ```
 
-These wizards guide you through the process with prompts, validation, and helpful descriptions.
+These wizards guide you through complex operations with prompts, validation, and helpful descriptions.
 
-### Bulk Operations
+### Bulk Operations 📦
 
 Efficiently manage multiple resources with built-in concurrency control:
 
@@ -424,7 +537,7 @@ coolifyme services deploy-all --dry-run --concurrent 3
 - Progress tracking and detailed result summaries
 - Error handling for individual operations
 
-### Monitoring & Health Checks
+### Monitoring & Health Checks 📊
 
 Comprehensive monitoring tools for your Coolify infrastructure:
 
@@ -447,7 +560,7 @@ coolifyme monitor watch --interval 30
 - Timeout handling for reliability
 - Verbose mode for detailed diagnostics
 
-### Command Aliases
+### Command Aliases 🚀
 
 Quick shortcuts for frequently used commands:
 
@@ -477,7 +590,7 @@ coolifyme alias list
 - **Health**: `health`, `ping`, `check` → `monitor health`
 - **Listing**: `ls-apps`, `ls-servers`, `ls-services` → respective list commands
 
-### Auto-Updates
+### Auto-Updates 🔄
 
 Smart update management with Homebrew integration:
 

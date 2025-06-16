@@ -93,6 +93,11 @@ func init() {
 	rootCmd.AddCommand(initInteractiveCmd)
 	rootCmd.AddCommand(monitorCmd)
 	rootCmd.AddCommand(aliasCmd)
+	rootCmd.AddCommand(searchCmd)
+	rootCmd.AddCommand(findCmd)
+	rootCmd.AddCommand(timeoutCmd)
+	rootCmd.AddCommand(formatCmd)
+	rootCmd.AddCommand(rollbackCmd)
 
 	// Add alias commands at root level for convenience
 	rootCmd.AddCommand(deployAppCmd)
