@@ -86,7 +86,7 @@ var findCmd = &cobra.Command{
 	Use:   "find",
 	Short: "Find resources with advanced filters",
 	Long:  "Find resources using advanced filtering options",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -300,7 +300,7 @@ func searchServers(ctx context.Context, client interface{}, query, status, tag s
 	return nil
 }
 
-func searchDatabases(ctx context.Context, client interface{}, query, status, tag string, caseSensitive bool, results *SearchResults) error {
+func searchDatabases(_ context.Context, _ interface{}, _, _, _ string, _ bool, _ *SearchResults) error {
 	return fmt.Errorf("database search not yet implemented")
 }
 

@@ -39,9 +39,14 @@ type File struct {
 	} `yaml:"global_settings,omitempty" mapstructure:"global_settings"`
 }
 
+const (
+	// DefaultProfileName represents the default profile name
+	DefaultProfileName = "default"
+)
+
 var defaultConfig = Config{
 	BaseURL:      "https://app.coolify.io/api/v1",
-	Profile:      "default",
+	Profile:      DefaultProfileName,
 	OutputFormat: "table",
 	LogLevel:     "info",
 }
@@ -75,17 +80,17 @@ func LoadConfig() (*Config, error) {
 	configFile, configFileErr := loadConfigFile()
 	if configFileErr == nil {
 		// If no profile is specified, use the default profile from config file
-		if profileName == "" || profileName == "default" {
+		if profileName == "" || profileName == DefaultProfileName {
 			if configFile.DefaultProfile != "" {
 				profileName = configFile.DefaultProfile
 			} else {
-				profileName = "default"
+				profileName = DefaultProfileName
 			}
 		}
 	} else {
 		// No config file exists, use defaults
 		if profileName == "" {
-			profileName = "default"
+			profileName = DefaultProfileName
 		}
 	}
 
@@ -169,7 +174,7 @@ func SaveConfig(config *Config) error {
 	// If no profile specified, use "default"
 	profileName := config.Profile
 	if profileName == "" {
-		profileName = "default"
+		profileName = DefaultProfileName
 		config.Profile = profileName
 	}
 
@@ -191,7 +196,7 @@ func SaveConfig(config *Config) error {
 	configFile.GlobalSettings.LogLevel = config.LogLevel
 
 	// Set as default profile if it's the only one or if we're saving the default profile
-	if len(configFile.Profiles) == 1 || configFile.DefaultProfile == "" || profileName == "default" {
+	if len(configFile.Profiles) == 1 || configFile.DefaultProfile == "" || profileName == DefaultProfileName {
 		configFile.DefaultProfile = profileName
 	}
 

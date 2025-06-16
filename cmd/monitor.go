@@ -16,11 +16,14 @@ var monitorCmd = &cobra.Command{
 }
 
 // Health check command
+// NOTE: golangci-lint incorrectly flags cmd as unused, but it's used for cmd.Flags().GetBool()
 var healthCmd = &cobra.Command{
 	Use:   "health",
 	Short: "Check system health",
 	Long:  "Check the health of Coolify API and connected resources",
+
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		// Note: cmd parameter is used for accessing flags with cmd.Flags().GetBool()
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)

@@ -127,7 +127,7 @@ var serversCreateCmd = &cobra.Command{
 		ip, _ := cmd.Flags().GetString("ip")
 		user, _ := cmd.Flags().GetString("user")
 		port, _ := cmd.Flags().GetInt32("port")
-		privateKeyUuid, _ := cmd.Flags().GetString("private-key-uuid")
+		privateKeyUUID, _ := cmd.Flags().GetString("private-key-uuid")
 		isBuildServer, _ := cmd.Flags().GetBool("is-build-server")
 		instantValidate, _ := cmd.Flags().GetBool("instant-validate")
 		proxyType, _ := cmd.Flags().GetString("proxy-type")
@@ -142,7 +142,7 @@ var serversCreateCmd = &cobra.Command{
 		if user == "" {
 			return fmt.Errorf("server user is required (--user)")
 		}
-		if privateKeyUuid == "" {
+		if privateKeyUUID == "" {
 			return fmt.Errorf("private key UUID is required (--private-key-uuid)")
 		}
 
@@ -169,7 +169,7 @@ var serversCreateCmd = &cobra.Command{
 			Ip:             &ip,
 			User:           &user,
 			Port:           &portInt,
-			PrivateKeyUuid: &privateKeyUuid,
+			PrivateKeyUuid: &privateKeyUUID,
 		}
 
 		// Add optional fields if they have specific values
@@ -330,7 +330,7 @@ var serversUpdateCmd = &cobra.Command{
 		ip, _ := cmd.Flags().GetString("ip")
 		user, _ := cmd.Flags().GetString("user")
 		port, _ := cmd.Flags().GetInt32("port")
-		privateKeyUuid, _ := cmd.Flags().GetString("private-key-uuid")
+		privateKeyUUID, _ := cmd.Flags().GetString("private-key-uuid")
 		isBuildServer, _ := cmd.Flags().GetBool("is-build-server")
 		instantValidate, _ := cmd.Flags().GetBool("instant-validate")
 		proxyType, _ := cmd.Flags().GetString("proxy-type")
@@ -369,8 +369,8 @@ var serversUpdateCmd = &cobra.Command{
 			portInt := int(port)
 			req.Port = &portInt
 		}
-		if privateKeyUuid != "" {
-			req.PrivateKeyUuid = &privateKeyUuid
+		if privateKeyUUID != "" {
+			req.PrivateKeyUuid = &privateKeyUUID
 		}
 		if cmd.Flags().Changed("is-build-server") {
 			req.IsBuildServer = &isBuildServer
@@ -434,7 +434,7 @@ var serversDeleteCmd = &cobra.Command{
 			fmt.Printf("⚠️  Are you sure you want to delete server %s? This action cannot be undone.\n", serverUUID)
 			fmt.Print("Type 'yes' to confirm: ")
 			var confirmation string
-			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != "yes" {
+			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != ConfirmationYes {
 				fmt.Println("❌ Deletion cancelled")
 				return nil
 			}

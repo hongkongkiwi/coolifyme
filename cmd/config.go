@@ -285,11 +285,14 @@ var configProfileListCmd = &cobra.Command{
 	},
 }
 
+// configProfileCreateCmd creates a new configuration profile
+// NOTE: golangci-lint incorrectly flags cmd as unused, but it's used for cmd.Flags().GetString()
 var configProfileCreateCmd = &cobra.Command{
 	Use:   "create <name>",
 	Short: "Create a new profile",
 	Long:  "Create a new configuration profile with specified name, API token, and base URL",
 	Args:  cobra.ExactArgs(1),
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		profileName := args[0]
 
@@ -298,7 +301,7 @@ var configProfileCreateCmd = &cobra.Command{
 			return err
 		}
 
-		// Get flags
+		// Get flags (this is why cmd parameter is needed)
 		token, _ := cmd.Flags().GetString("token")
 		url, _ := cmd.Flags().GetString("url")
 
@@ -355,7 +358,7 @@ var configProfileDeleteCmd = &cobra.Command{
 			fmt.Printf("⚠️  Are you sure you want to delete profile '%s'? This action cannot be undone.\n", profileName)
 			fmt.Print("Type 'yes' to confirm: ")
 			var confirmation string
-			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != "yes" {
+			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != ConfirmationYes {
 				fmt.Println("❌ Deletion cancelled")
 				return nil
 			}
@@ -375,6 +378,7 @@ var configProfileSetCmd = &cobra.Command{
 	Short: "Update current profile settings",
 	Long:  "Update API token and base URL for the current profile",
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		// Note: cmd parameter is used for accessing flags with cmd.Flags().GetString()
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)

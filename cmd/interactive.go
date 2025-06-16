@@ -175,7 +175,7 @@ var appCreateWizardCmd = &cobra.Command{
 		confirm, _ := reader.ReadString('\n')
 		confirm = strings.TrimSpace(strings.ToLower(confirm))
 
-		if confirm != "y" && confirm != "yes" {
+		if confirm != "y" && confirm != ConfirmationYes {
 			fmt.Println("❌ Application creation cancelled")
 			return nil
 		}

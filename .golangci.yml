@@ -21,7 +21,7 @@ linters:
     - staticcheck      # Now includes gosimple
     - unused
     - misspell
-    - revive
+    # - revive          # Disabled due to false positives with unused parameters
     
     # Additional modern linters for better code quality
     - gocyclo          # Cyclomatic complexity

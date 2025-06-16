@@ -89,7 +89,7 @@ var timeoutSetCmd = &cobra.Command{
 	Use:   "set",
 	Short: "Set timeout configuration",
 	Long:  "Set global timeout and retry configuration for API operations",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		timeout, _ := cmd.Flags().GetDuration("timeout")
 		retryCount, _ := cmd.Flags().GetInt("retry")
 		retryDelay, _ := cmd.Flags().GetDuration("retry-delay")
@@ -124,7 +124,7 @@ var timeoutShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show current timeout configuration",
 	Long:  "Display the current global timeout and retry configuration",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		config := getTimeoutConfig()
 
 		fmt.Printf("🕐 Current Timeout Configuration\n")
@@ -154,37 +154,6 @@ func getTimeoutConfig() *TimeoutConfig {
 	}
 
 	return config
-}
-
-// parseTimeoutFlags extracts timeout configuration from command flags
-func parseTimeoutFlags(cmd *cobra.Command) *TimeoutConfig {
-	config := getTimeoutConfig()
-
-	// Override with command-specific flags if provided
-	if cmd.Flags().Changed("timeout") {
-		if timeout, err := cmd.Flags().GetDuration("timeout"); err == nil && timeout > 0 {
-			config.Timeout = timeout
-		}
-	}
-	if cmd.Flags().Changed("retry") {
-		if retry, err := cmd.Flags().GetInt("retry"); err == nil && retry >= 0 {
-			config.RetryCount = retry
-		}
-	}
-	if cmd.Flags().Changed("retry-delay") {
-		if retryDelay, err := cmd.Flags().GetDuration("retry-delay"); err == nil && retryDelay > 0 {
-			config.RetryDelay = retryDelay
-		}
-	}
-
-	return config
-}
-
-// addTimeoutFlags adds timeout and retry flags to a command
-func addTimeoutFlags(cmd *cobra.Command) {
-	cmd.Flags().Duration("timeout", 0, "Request timeout (0 = use global default)")
-	cmd.Flags().Int("retry", -1, "Number of retries (-1 = use global default)")
-	cmd.Flags().Duration("retry-delay", 0, "Delay between retries (0 = use global default)")
 }
 
 func init() {

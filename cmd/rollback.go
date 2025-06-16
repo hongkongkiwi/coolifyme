@@ -86,9 +86,8 @@ var rollbackAppCmd = &cobra.Command{
 		// Perform rollback
 		if toCommit != "" {
 			return rollbackToCommit(ctx, client, appUUID, toCommit)
-		} else {
-			return rollbackToVersion(ctx, client, appUUID, toVersion)
 		}
+		return rollbackToVersion(ctx, client, appUUID, toVersion)
 	},
 }
 
@@ -187,7 +186,7 @@ func listAvailableVersions(ctx context.Context, client interface{}, appUUID stri
 	return nil
 }
 
-func rollbackToCommit(ctx context.Context, client interface{}, appUUID, commitHash string) error {
+func rollbackToCommit(_ context.Context, _ interface{}, _, commitHash string) error {
 	fmt.Printf("🔄 Rolling back to commit: %s\n", commitHash)
 
 	// This would require specific API endpoints for git-based rollbacks
@@ -203,7 +202,7 @@ func rollbackToCommit(ctx context.Context, client interface{}, appUUID, commitHa
 	return nil
 }
 
-func rollbackToVersion(ctx context.Context, client interface{}, appUUID, version string) error {
+func rollbackToVersion(_ context.Context, _ interface{}, _, version string) error {
 	fmt.Printf("🔄 Rolling back to version: %s\n", version)
 
 	// This would require deployment history and rollback API endpoints
@@ -236,7 +235,7 @@ func getAppName(app interface{}) string {
 	return "Unknown"
 }
 
-func showApplicationHistory(ctx context.Context, client interface{}, appUUID string, limit int, jsonOutput bool) error {
+func showApplicationHistory(_ context.Context, _ interface{}, appUUID string, limit int, jsonOutput bool) error {
 	fmt.Printf("📜 Application History: %s\n", appUUID)
 	fmt.Printf("=========================\n")
 
@@ -293,11 +292,12 @@ func showApplicationHistory(ctx context.Context, client interface{}, appUUID str
 
 	for _, record := range history {
 		status := record.Status
-		if status == "successful" {
+		switch status {
+		case "successful":
 			status = "✅ " + status
-		} else if status == "failed" {
+		case "failed":
 			status = "❌ " + status
-		} else {
+		default:
 			status = "🔄 " + status
 		}
 
@@ -337,7 +337,7 @@ type RollbackGitCommit struct {
 	Date    string `json:"date"`
 }
 
-func getDeploymentHistory(ctx context.Context, client interface{}, appUUID string) ([]DeploymentRecord, error) {
+func getDeploymentHistory(_ context.Context, _ interface{}, _ string) ([]DeploymentRecord, error) {
 	// This would require actual API calls to get deployment history
 	// For now, return mock data
 	return []DeploymentRecord{
@@ -346,7 +346,7 @@ func getDeploymentHistory(ctx context.Context, client interface{}, appUUID strin
 	}, nil
 }
 
-func getGitCommits(ctx context.Context, client interface{}, appUUID string) ([]RollbackGitCommit, error) {
+func getGitCommits(_ context.Context, _ interface{}, _ string) ([]RollbackGitCommit, error) {
 	// This would require actual API calls to get git commits
 	// For now, return mock data
 	return []RollbackGitCommit{
