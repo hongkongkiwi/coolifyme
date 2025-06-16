@@ -69,7 +69,15 @@ tasks:
   lint:
     desc: Run linter
     cmds:
-      - golangci-lint run
+      - |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run
+        elif [ -f ~/go/bin/golangci-lint ]; then
+          ~/go/bin/golangci-lint run
+        else
+          echo "Error: golangci-lint not found. Please install it with: task install-tools"
+          exit 1
+        fi
 
   test-coverage:
     desc: Run tests with coverage

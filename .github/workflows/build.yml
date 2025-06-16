@@ -35,17 +35,20 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     
-    - name: Install oapi-codegen
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
-    
+    - name: Install development tools
+      run: task install-tools
+
     - name: Generate API client
       run: task generate
-    
+
     - name: Run tests
       run: task test
-    
+
     - name: Run linting
-      run: task lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: latest
+        args: --timeout=5m
       continue-on-error: true
     
     - name: Build for multiple platforms
@@ -76,8 +79,8 @@ jobs:
       with:
         version: 3.x
     
-    - name: Install oapi-codegen
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+    - name: Install development tools
+      run: task install-tools
     
     - name: Generate API client
       run: task generate
