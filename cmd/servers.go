@@ -183,7 +183,7 @@ var serversCreateCmd = &cobra.Command{
 			// Convert string to proper enum type
 			var proxyTypeEnum coolify.CreateServerJSONBodyProxyType
 			switch proxyType {
-			case "traefik":
+			case ProxyTraefik:
 				proxyTypeEnum = coolify.CreateServerJSONBodyProxyTypeTraefik
 			case "caddy":
 				proxyTypeEnum = coolify.CreateServerJSONBodyProxyTypeCaddy

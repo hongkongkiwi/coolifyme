@@ -556,7 +556,7 @@ var servicesUpdateEnvsCmd = &cobra.Command{
 		var envVarsList []interface{}
 		if envFile != "" {
 			// Read environment variables from file
-			content, err := os.ReadFile(envFile)
+			content, err := safeReadFile(envFile)
 			if err != nil {
 				return fmt.Errorf("failed to read env file: %w", err)
 			}

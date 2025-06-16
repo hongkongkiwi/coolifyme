@@ -191,7 +191,7 @@ var servicesDeployAllCmd = &cobra.Command{
 }
 
 // Helper function for bulk application operations
-func bulkOperationApps(ctx context.Context, client interface{}, uuids []string, operation string, concurrent int) error {
+func bulkOperationApps(_ context.Context, client interface{}, uuids []string, operation string, concurrent int) error {
 	if concurrent <= 0 {
 		concurrent = 5 // Default concurrency
 	}
@@ -258,7 +258,7 @@ func bulkOperationApps(ctx context.Context, client interface{}, uuids []string, 
 }
 
 // Helper function for bulk service operations
-func bulkOperationServices(ctx context.Context, client interface{}, uuids []string, operation string, concurrent int) error {
+func bulkOperationServices(_ context.Context, client interface{}, uuids []string, operation string, concurrent int) error {
 	if concurrent <= 0 {
 		concurrent = 5 // Default concurrency
 	}

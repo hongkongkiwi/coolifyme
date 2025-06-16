@@ -16,7 +16,7 @@ var initInteractiveCmd = &cobra.Command{
 	Use:   "init-interactive",
 	Short: "Interactive setup wizard",
 	Long:  "Guided setup wizard to configure coolifyme for first-time use",
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🚀 Welcome to coolifyme interactive setup!")
 		fmt.Println("=====================================")
 		fmt.Println()
@@ -103,7 +103,7 @@ var appCreateWizardCmd = &cobra.Command{
 	Use:   "create-wizard",
 	Short: "Interactive application creation wizard",
 	Long:  "Guided wizard to create a new application with all necessary configuration",
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🚀 Application Creation Wizard")
 		fmt.Println("=============================")
 		fmt.Println()
@@ -194,7 +194,7 @@ var serverAddWizardCmd = &cobra.Command{
 	Use:   "add-wizard",
 	Short: "Interactive server setup wizard",
 	Long:  "Guided wizard to add a new server with all necessary configuration",
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🖥️  Server Setup Wizard")
 		fmt.Println("======================")
 		fmt.Println()

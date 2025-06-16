@@ -77,7 +77,7 @@ var rollbackAppCmd = &cobra.Command{
 			fmt.Printf("⚠️  Are you sure you want to rollback this application? This action cannot be undone.\n")
 			fmt.Print("Type 'yes' to confirm: ")
 			var confirmation string
-			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != "yes" {
+			if _, err := fmt.Scanln(&confirmation); err != nil || confirmation != ConfirmationYes {
 				fmt.Println("❌ Rollback cancelled")
 				return nil
 			}

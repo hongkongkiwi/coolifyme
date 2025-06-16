@@ -50,7 +50,7 @@ var (
 		Use:   "list",
 		Short: "List all available aliases",
 		Long:  "Display all available command aliases and their targets",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			fmt.Println("📝 Available Command Aliases")
 			fmt.Println("===========================")
 			fmt.Println()

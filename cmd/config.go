@@ -269,7 +269,7 @@ var configProfileListCmd = &cobra.Command{
 		for _, profile := range profiles {
 			active := ""
 			if profile.Name == defaultProfile {
-				active = "✅"
+				active = StatusSuccess
 			}
 
 			tokenDisplay := "(not set)"

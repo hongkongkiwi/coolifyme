@@ -485,7 +485,7 @@ var formatExamplesCmd = &cobra.Command{
 	Use:   "examples",
 	Short: "Show format examples",
 	Long:  "Display examples of different output formats",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		fmt.Println("🎨 Output Format Examples")
 		fmt.Println("========================")
 		fmt.Println()

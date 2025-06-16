@@ -59,7 +59,7 @@ Examples:
 Created by Andy Savage <andy@savage.hk>
 Source: https://github.com/hongkongkiwi/coolifyme`,
 	Version: getVersionString(),
-	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		setupLogging()
 	},
 }

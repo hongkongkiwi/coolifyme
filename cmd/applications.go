@@ -586,7 +586,7 @@ var applicationsEnvUpdateBulkCmd = &cobra.Command{
 		var envVarsList []interface{}
 		if envFile != "" {
 			// Read environment variables from file
-			content, err := os.ReadFile(envFile)
+			content, err := safeReadFile(envFile)
 			if err != nil {
 				return fmt.Errorf("failed to read env file: %w", err)
 			}
@@ -744,7 +744,7 @@ var applicationsEnvImportCmd = &cobra.Command{
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		// Read .env file
-		content, err := os.ReadFile(filename)
+		content, err := safeReadFile(filename)
 		if err != nil {
 			return fmt.Errorf("failed to read .env file: %w", err)
 		}
@@ -844,7 +844,7 @@ var applicationsEnvSyncCmd = &cobra.Command{
 			fileEnvMap = make(map[string]string)
 			fmt.Printf("📄 .env file %s doesn't exist, will create it\n", filename)
 		} else {
-			content, err := os.ReadFile(filename)
+			content, err := safeReadFile(filename)
 			if err != nil {
 				return fmt.Errorf("failed to read .env file: %w", err)
 			}
@@ -1018,7 +1018,7 @@ var applicationsEnvCleanupCmd = &cobra.Command{
 		}
 
 		// Read .env file
-		content, err := os.ReadFile(filename)
+		content, err := safeReadFile(filename)
 		if err != nil {
 			return fmt.Errorf("failed to read .env file: %w", err)
 		}

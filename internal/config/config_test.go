@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+const (
+	// DefaultProfile represents the default profile name
+	DefaultProfile = "default"
+)
+
 func TestLoadConfigDefaults(t *testing.T) {
 	// Create a temporary directory for testing
 	tmpDir, err := os.MkdirTemp("", "coolifyme-test")
@@ -32,7 +37,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		t.Errorf("Expected default BaseURL, got %s", config.BaseURL)
 	}
 
-	if config.Profile != "default" {
+	if config.Profile != DefaultProfile {
 		t.Errorf("Expected default profile, got %s", config.Profile)
 	}
 }
@@ -58,7 +63,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	cfg := &Config{
 		APIToken: "test-token",
 		BaseURL:  "https://test.example.com/api/v1",
-		Profile:  "default",
+		Profile:  DefaultProfile,
 	}
 
 	err = SaveConfig(cfg)
