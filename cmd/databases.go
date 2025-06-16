@@ -435,41 +435,266 @@ var databasesCreateMongoDBCmd = &cobra.Command{
 	},
 }
 
-// Create stubs for other database types
+// databasesCreateClickHouseCmd represents the databases create clickhouse command
 var databasesCreateClickHouseCmd = &cobra.Command{
 	Use:   "clickhouse",
 	Short: "Create a ClickHouse database",
 	Long:  "Create a new ClickHouse database",
-	RunE:  createDatabaseStub("ClickHouse"),
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Get required parameters
+		envName, _ := cmd.Flags().GetString("environment")
+		envUUID, _ := cmd.Flags().GetString("environment-uuid")
+		projectUUID, _ := cmd.Flags().GetString("project")
+		serverUUID, _ := cmd.Flags().GetString("server")
+
+		if envName == "" && envUUID == "" {
+			return fmt.Errorf("either --environment or --environment-uuid is required")
+		}
+		if projectUUID == "" {
+			return fmt.Errorf("--project is required")
+		}
+		if serverUUID == "" {
+			return fmt.Errorf("--server is required")
+		}
+
+		req := coolify.CreateDatabaseClickhouseJSONRequestBody{
+			EnvironmentName: envName,
+			EnvironmentUuid: envUUID,
+			ProjectUuid:     projectUUID,
+			ServerUuid:      serverUUID,
+		}
+
+		// Optional parameters
+		if name, _ := cmd.Flags().GetString("name"); name != "" {
+			req.Name = &name
+		}
+		if desc, _ := cmd.Flags().GetString("description"); desc != "" {
+			req.Description = &desc
+		}
+		if image, _ := cmd.Flags().GetString("image"); image != "" {
+			req.Image = &image
+		}
+		if instant, _ := cmd.Flags().GetBool("instant-deploy"); instant {
+			req.InstantDeploy = &instant
+		}
+		if adminUser, _ := cmd.Flags().GetString("admin-user"); adminUser != "" {
+			req.ClickhouseAdminUser = &adminUser
+		}
+		if adminPassword, _ := cmd.Flags().GetString("admin-password"); adminPassword != "" {
+			req.ClickhouseAdminPassword = &adminPassword
+		}
+
+		err = client.Databases().CreateClickHouse(context.Background(), req)
+		if err != nil {
+			return fmt.Errorf("failed to create ClickHouse database: %w", err)
+		}
+
+		fmt.Println("✅ ClickHouse database created successfully")
+		return nil
+	},
 }
 
+// databasesCreateDragonflyCmd represents the databases create dragonfly command
 var databasesCreateDragonflyCmd = &cobra.Command{
 	Use:   "dragonfly",
 	Short: "Create a Dragonfly database",
 	Long:  "Create a new Dragonfly database",
-	RunE:  createDatabaseStub("Dragonfly"),
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Get required parameters
+		envName, _ := cmd.Flags().GetString("environment")
+		envUUID, _ := cmd.Flags().GetString("environment-uuid")
+		projectUUID, _ := cmd.Flags().GetString("project")
+		serverUUID, _ := cmd.Flags().GetString("server")
+
+		if envName == "" && envUUID == "" {
+			return fmt.Errorf("either --environment or --environment-uuid is required")
+		}
+		if projectUUID == "" {
+			return fmt.Errorf("--project is required")
+		}
+		if serverUUID == "" {
+			return fmt.Errorf("--server is required")
+		}
+
+		req := coolify.CreateDatabaseDragonflyJSONRequestBody{
+			EnvironmentName: envName,
+			EnvironmentUuid: envUUID,
+			ProjectUuid:     projectUUID,
+			ServerUuid:      serverUUID,
+		}
+
+		// Optional parameters
+		if name, _ := cmd.Flags().GetString("name"); name != "" {
+			req.Name = &name
+		}
+		if desc, _ := cmd.Flags().GetString("description"); desc != "" {
+			req.Description = &desc
+		}
+		if image, _ := cmd.Flags().GetString("image"); image != "" {
+			req.Image = &image
+		}
+		if instant, _ := cmd.Flags().GetBool("instant-deploy"); instant {
+			req.InstantDeploy = &instant
+		}
+		if password, _ := cmd.Flags().GetString("password"); password != "" {
+			req.DragonflyPassword = &password
+		}
+
+		err = client.Databases().CreateDragonfly(context.Background(), req)
+		if err != nil {
+			return fmt.Errorf("failed to create Dragonfly database: %w", err)
+		}
+
+		fmt.Println("✅ Dragonfly database created successfully")
+		return nil
+	},
 }
 
+// databasesCreateKeyDBCmd represents the databases create keydb command
 var databasesCreateKeyDBCmd = &cobra.Command{
 	Use:   "keydb",
 	Short: "Create a KeyDB database",
 	Long:  "Create a new KeyDB database",
-	RunE:  createDatabaseStub("KeyDB"),
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Get required parameters
+		envName, _ := cmd.Flags().GetString("environment")
+		envUUID, _ := cmd.Flags().GetString("environment-uuid")
+		projectUUID, _ := cmd.Flags().GetString("project")
+		serverUUID, _ := cmd.Flags().GetString("server")
+
+		if envName == "" && envUUID == "" {
+			return fmt.Errorf("either --environment or --environment-uuid is required")
+		}
+		if projectUUID == "" {
+			return fmt.Errorf("--project is required")
+		}
+		if serverUUID == "" {
+			return fmt.Errorf("--server is required")
+		}
+
+		req := coolify.CreateDatabaseKeydbJSONRequestBody{
+			EnvironmentName: envName,
+			EnvironmentUuid: envUUID,
+			ProjectUuid:     projectUUID,
+			ServerUuid:      serverUUID,
+		}
+
+		// Optional parameters
+		if name, _ := cmd.Flags().GetString("name"); name != "" {
+			req.Name = &name
+		}
+		if desc, _ := cmd.Flags().GetString("description"); desc != "" {
+			req.Description = &desc
+		}
+		if image, _ := cmd.Flags().GetString("image"); image != "" {
+			req.Image = &image
+		}
+		if instant, _ := cmd.Flags().GetBool("instant-deploy"); instant {
+			req.InstantDeploy = &instant
+		}
+		if password, _ := cmd.Flags().GetString("password"); password != "" {
+			req.KeydbPassword = &password
+		}
+		if conf, _ := cmd.Flags().GetString("keydb-conf"); conf != "" {
+			req.KeydbConf = &conf
+		}
+
+		err = client.Databases().CreateKeyDB(context.Background(), req)
+		if err != nil {
+			return fmt.Errorf("failed to create KeyDB database: %w", err)
+		}
+
+		fmt.Println("✅ KeyDB database created successfully")
+		return nil
+	},
 }
 
+// databasesCreateMariaDBCmd represents the databases create mariadb command
 var databasesCreateMariaDBCmd = &cobra.Command{
 	Use:   "mariadb",
 	Short: "Create a MariaDB database",
 	Long:  "Create a new MariaDB database",
-	RunE:  createDatabaseStub("MariaDB"),
-}
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
 
-func createDatabaseStub(dbType string) func(cmd *cobra.Command, args []string) error {
-	return func(_ *cobra.Command, _ []string) error {
-		fmt.Printf("Creating %s databases is not yet implemented in this CLI\n", dbType)
-		fmt.Printf("Please use the Coolify web interface or API directly\n")
+		// Get required parameters
+		envName, _ := cmd.Flags().GetString("environment")
+		envUUID, _ := cmd.Flags().GetString("environment-uuid")
+		projectUUID, _ := cmd.Flags().GetString("project")
+		serverUUID, _ := cmd.Flags().GetString("server")
+
+		if envName == "" && envUUID == "" {
+			return fmt.Errorf("either --environment or --environment-uuid is required")
+		}
+		if projectUUID == "" {
+			return fmt.Errorf("--project is required")
+		}
+		if serverUUID == "" {
+			return fmt.Errorf("--server is required")
+		}
+
+		req := coolify.CreateDatabaseMariadbJSONRequestBody{
+			EnvironmentName: envName,
+			EnvironmentUuid: envUUID,
+			ProjectUuid:     projectUUID,
+			ServerUuid:      serverUUID,
+		}
+
+		// Optional parameters
+		if name, _ := cmd.Flags().GetString("name"); name != "" {
+			req.Name = &name
+		}
+		if desc, _ := cmd.Flags().GetString("description"); desc != "" {
+			req.Description = &desc
+		}
+		if image, _ := cmd.Flags().GetString("image"); image != "" {
+			req.Image = &image
+		}
+		if instant, _ := cmd.Flags().GetBool("instant-deploy"); instant {
+			req.InstantDeploy = &instant
+		}
+		if rootPassword, _ := cmd.Flags().GetString("root-password"); rootPassword != "" {
+			req.MariadbRootPassword = &rootPassword
+		}
+		if database, _ := cmd.Flags().GetString("mariadb-database"); database != "" {
+			req.MariadbDatabase = &database
+		}
+		if user, _ := cmd.Flags().GetString("mariadb-user"); user != "" {
+			req.MariadbUser = &user
+		}
+		if userPassword, _ := cmd.Flags().GetString("mariadb-password"); userPassword != "" {
+			req.MariadbPassword = &userPassword
+		}
+		if conf, _ := cmd.Flags().GetString("mariadb-conf"); conf != "" {
+			req.MariadbConf = &conf
+		}
+
+		err = client.Databases().CreateMariaDB(context.Background(), req)
+		if err != nil {
+			return fmt.Errorf("failed to create MariaDB database: %w", err)
+		}
+
+		fmt.Println("✅ MariaDB database created successfully")
 		return nil
-	}
+	},
 }
 
 func init() {
@@ -493,6 +718,35 @@ func init() {
 		cmd.Flags().String("image", "", "Docker image")
 		cmd.Flags().Bool("instant-deploy", false, "Deploy immediately")
 	}
+
+	// Database-specific flags
+	// ClickHouse specific flags
+	databasesCreateClickHouseCmd.Flags().String("admin-user", "", "ClickHouse admin user")
+	databasesCreateClickHouseCmd.Flags().String("admin-password", "", "ClickHouse admin password")
+
+	// Dragonfly specific flags
+	databasesCreateDragonflyCmd.Flags().String("password", "", "Dragonfly password")
+
+	// KeyDB specific flags
+	databasesCreateKeyDBCmd.Flags().String("password", "", "KeyDB password")
+	databasesCreateKeyDBCmd.Flags().String("keydb-conf", "", "KeyDB configuration")
+
+	// MariaDB specific flags
+	databasesCreateMariaDBCmd.Flags().String("root-password", "", "MariaDB root password")
+	databasesCreateMariaDBCmd.Flags().String("mariadb-database", "", "MariaDB database name")
+	databasesCreateMariaDBCmd.Flags().String("mariadb-user", "", "MariaDB user")
+	databasesCreateMariaDBCmd.Flags().String("mariadb-password", "", "MariaDB user password")
+	databasesCreateMariaDBCmd.Flags().String("mariadb-conf", "", "MariaDB configuration")
+
+	// Add create subcommands to databases create
+	databasesCreateCmd.AddCommand(databasesCreatePostgreSQLCmd)
+	databasesCreateCmd.AddCommand(databasesCreateMySQLCmd)
+	databasesCreateCmd.AddCommand(databasesCreateRedisCmd)
+	databasesCreateCmd.AddCommand(databasesCreateMongoDBCmd)
+	databasesCreateCmd.AddCommand(databasesCreateClickHouseCmd)
+	databasesCreateCmd.AddCommand(databasesCreateDragonflyCmd)
+	databasesCreateCmd.AddCommand(databasesCreateKeyDBCmd)
+	databasesCreateCmd.AddCommand(databasesCreateMariaDBCmd)
 
 	// Add subcommands to databases
 	databasesCmd.AddCommand(databasesListCmd)

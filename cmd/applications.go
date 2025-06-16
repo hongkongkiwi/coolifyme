@@ -430,7 +430,12 @@ func init() {
 	applicationsEnvCmd.AddCommand(applicationsEnvListCmd)
 	applicationsEnvCmd.AddCommand(applicationsEnvCreateCmd)
 	applicationsEnvCmd.AddCommand(applicationsEnvUpdateCmd)
+	applicationsEnvCmd.AddCommand(applicationsEnvUpdateBulkCmd)
 	applicationsEnvCmd.AddCommand(applicationsEnvDeleteCmd)
+
+	// Flags for bulk environment variable update command
+	applicationsEnvUpdateBulkCmd.Flags().StringP("env-data", "d", "", "JSON string containing environment variables")
+	applicationsEnvUpdateBulkCmd.Flags().StringP("env-file", "f", "", "File containing environment variables in JSON format")
 }
 
 // applicationsEnvListCmd represents the applications env list command
@@ -538,6 +543,90 @@ var applicationsEnvUpdateCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Environment variable updated: %s\n", message)
+		return nil
+	},
+}
+
+// applicationsEnvUpdateBulkCmd represents the applications env update-bulk command
+var applicationsEnvUpdateBulkCmd = &cobra.Command{
+	Use:   "update-bulk <app-uuid>",
+	Short: "Bulk update environment variables",
+	Long:  "Update multiple environment variables for an application from a file or JSON string",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Get flag values
+		envDataFlag, _ := cmd.Flags().GetString("env-data")
+		envFile, _ := cmd.Flags().GetString("env-file")
+
+		if envDataFlag == "" && envFile == "" {
+			return fmt.Errorf("either --env-data or --env-file is required")
+		}
+
+		var envVarsList []interface{}
+		if envFile != "" {
+			// Read environment variables from file
+			content, err := os.ReadFile(envFile)
+			if err != nil {
+				return fmt.Errorf("failed to read env file: %w", err)
+			}
+			if err := json.Unmarshal(content, &envVarsList); err != nil {
+				return fmt.Errorf("failed to parse env file JSON: %w", err)
+			}
+		} else {
+			// Parse environment variables from JSON string
+			if err := json.Unmarshal([]byte(envDataFlag), &envVarsList); err != nil {
+				return fmt.Errorf("failed to parse env data JSON: %w", err)
+			}
+		}
+
+		// Convert to the expected structure for applications
+		var envStructs []struct {
+			IsBuildTime *bool   `json:"is_build_time,omitempty"`
+			IsLiteral   *bool   `json:"is_literal,omitempty"`
+			IsMultiline *bool   `json:"is_multiline,omitempty"`
+			IsPreview   *bool   `json:"is_preview,omitempty"`
+			IsShownOnce *bool   `json:"is_shown_once,omitempty"`
+			Key         *string `json:"key,omitempty"`
+			Value       *string `json:"value,omitempty"`
+		}
+
+		// Parse each environment variable
+		for _, item := range envVarsList {
+			itemData, _ := json.Marshal(item)
+			var envVar struct {
+				IsBuildTime *bool   `json:"is_build_time,omitempty"`
+				IsLiteral   *bool   `json:"is_literal,omitempty"`
+				IsMultiline *bool   `json:"is_multiline,omitempty"`
+				IsPreview   *bool   `json:"is_preview,omitempty"`
+				IsShownOnce *bool   `json:"is_shown_once,omitempty"`
+				Key         *string `json:"key,omitempty"`
+				Value       *string `json:"value,omitempty"`
+			}
+			if err := json.Unmarshal(itemData, &envVar); err == nil {
+				envStructs = append(envStructs, envVar)
+			}
+		}
+
+		// Create request body
+		req := coolify.UpdateEnvsByApplicationUuidJSONRequestBody{
+			Data: envStructs,
+		}
+
+		ctx := context.Background()
+		appUUID := args[0]
+
+		message, err := client.Applications().UpdateEnvs(ctx, appUUID, req)
+		if err != nil {
+			return fmt.Errorf("failed to bulk update environment variables: %w", err)
+		}
+
+		fmt.Printf("✅ Environment variables updated successfully\n")
+		fmt.Printf("   💬 Message: %s\n", message)
 		return nil
 	},
 }
