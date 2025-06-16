@@ -717,7 +717,7 @@ var applicationsEnvExportCmd = &cobra.Command{
 		}
 
 		// Write to file
-		if err := os.WriteFile(filename, []byte(envContent.String()), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte(envContent.String()), 0o600); err != nil {
 			return fmt.Errorf("failed to write .env file: %w", err)
 		}
 
@@ -964,7 +964,7 @@ var applicationsEnvSyncCmd = &cobra.Command{
 				envContent.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 			}
 
-			if err := os.WriteFile(filename, []byte(envContent.String()), 0644); err != nil {
+			if err := os.WriteFile(filename, []byte(envContent.String()), 0o600); err != nil {
 				return fmt.Errorf("failed to write .env file: %w", err)
 			}
 			hasChanges = true
@@ -1050,7 +1050,7 @@ var applicationsEnvCleanupCmd = &cobra.Command{
 		// Create backup if requested
 		if backup {
 			backupFilename := filename + ".backup." + time.Now().Format("20060102-150405")
-			if err := os.WriteFile(backupFilename, content, 0644); err != nil {
+			if err := os.WriteFile(backupFilename, content, 0o600); err != nil {
 				return fmt.Errorf("failed to create backup: %w", err)
 			}
 			fmt.Printf("📄 Backup created: %s\n", backupFilename)
@@ -1075,7 +1075,7 @@ var applicationsEnvCleanupCmd = &cobra.Command{
 			envContent.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 		}
 
-		if err := os.WriteFile(filename, []byte(envContent.String()), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte(envContent.String()), 0o600); err != nil {
 			return fmt.Errorf("failed to write cleaned .env file: %w", err)
 		}
 

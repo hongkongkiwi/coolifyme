@@ -139,7 +139,7 @@ var findCmd = &cobra.Command{
 	},
 }
 
-// SearchResults holds search results from different resource types
+// SearchResults holds the results from a search operation across different resource types
 type SearchResults struct {
 	Applications []SearchResultApp    `json:"applications"`
 	Services     []SearchResultSvc    `json:"services"`
@@ -148,6 +148,7 @@ type SearchResults struct {
 	TotalCount   int                  `json:"total_count"`
 }
 
+// SearchResultApp represents an application in search results
 type SearchResultApp struct {
 	UUID   string `json:"uuid"`
 	Name   string `json:"name"`
@@ -156,6 +157,7 @@ type SearchResultApp struct {
 	URL    string `json:"url,omitempty"`
 }
 
+// SearchResultSvc represents a service in search results
 type SearchResultSvc struct {
 	UUID   string `json:"uuid"`
 	Name   string `json:"name"`
@@ -163,6 +165,7 @@ type SearchResultSvc struct {
 	Type   string `json:"type"`
 }
 
+// SearchResultServer represents a server in search results
 type SearchResultServer struct {
 	UUID        string `json:"uuid"`
 	Name        string `json:"name"`
@@ -172,6 +175,7 @@ type SearchResultServer struct {
 	Description string `json:"description,omitempty"`
 }
 
+// SearchResultDB represents a database in search results
 type SearchResultDB struct {
 	UUID   string `json:"uuid"`
 	Name   string `json:"name"`
@@ -245,7 +249,7 @@ func searchServices(ctx context.Context, client interface{}, query, status, tag 
 				result.Name = *svc.Name
 			}
 			// Services don't have a status field in the API model
-			result.Status = "unknown"
+			result.Status = StatusUnknown
 			results.Services = append(results.Services, result)
 		}
 	}
@@ -286,9 +290,9 @@ func searchServers(ctx context.Context, client interface{}, query, status, tag s
 			}
 			// Determine status from validation
 			if srv.ValidationLogs != nil {
-				result.Status = "validated"
+				result.Status = StatusValidated
 			} else {
-				result.Status = "unknown"
+				result.Status = StatusUnknown
 			}
 			results.Servers = append(results.Servers, result)
 		}
@@ -297,10 +301,7 @@ func searchServers(ctx context.Context, client interface{}, query, status, tag s
 }
 
 func searchDatabases(ctx context.Context, client interface{}, query, status, tag string, caseSensitive bool, results *SearchResults) error {
-	// Note: Database search is limited due to API returning raw strings
-	// This is a placeholder for when proper database listing is available
-	results.Databases = []SearchResultDB{} // Initialize empty
-	return nil
+	return fmt.Errorf("database search not yet implemented")
 }
 
 func findApplications(ctx context.Context, client interface{}, name, status, tag string, results *SearchResults) error {
@@ -378,9 +379,9 @@ func matchesSearchServer(srv coolify.Server, query, status, tag string, caseSens
 	queryMatches := query == "" || containsText(strings.Join(searchFields, " "), query, caseSensitive)
 
 	// For servers, we check validation status
-	serverStatus := "unknown"
+	serverStatus := StatusUnknown
 	if srv.ValidationLogs != nil {
-		serverStatus = "validated"
+		serverStatus = StatusValidated
 	}
 	statusMatches := status == "" || serverStatus == status
 	tagMatches := tag == ""
@@ -407,6 +408,7 @@ func containsText(text, query string, caseSensitive bool) bool {
 	return strings.Contains(text, query)
 }
 
+// ApplyLimit applies a limit to the search results across all resource types
 func (sr *SearchResults) ApplyLimit(limit int) {
 	count := 0
 
@@ -462,13 +464,21 @@ func displaySearchResults(results *SearchResults, query string) {
 		fmt.Printf("📱 Applications (%d)\n", len(results.Applications))
 		fmt.Println("-------------------")
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tURL")
-		fmt.Fprintln(w, "----\t----\t------\t---")
+		if _, err := fmt.Fprintln(w, "UUID\tNAME\tSTATUS\tURL"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write application headers: %v\n", err)
+		}
+		if _, err := fmt.Fprintln(w, "----\t----\t------\t---"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write application separators: %v\n", err)
+		}
 
 		for _, app := range results.Applications {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", app.UUID, app.Name, app.Status, app.URL)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", app.UUID, app.Name, app.Status, app.URL); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to write application row: %v\n", err)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to flush application table: %v\n", err)
+		}
 		fmt.Println()
 	}
 
@@ -477,13 +487,21 @@ func displaySearchResults(results *SearchResults, query string) {
 		fmt.Printf("🔧 Services (%d)\n", len(results.Services))
 		fmt.Println("---------------")
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "UUID\tNAME\tSTATUS")
-		fmt.Fprintln(w, "----\t----\t------")
+		if _, err := fmt.Fprintln(w, "UUID\tNAME\tSTATUS"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write service headers: %v\n", err)
+		}
+		if _, err := fmt.Fprintln(w, "----\t----\t------"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write service separators: %v\n", err)
+		}
 
 		for _, svc := range results.Services {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", svc.UUID, svc.Name, svc.Status)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", svc.UUID, svc.Name, svc.Status); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to write service row: %v\n", err)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to flush service table: %v\n", err)
+		}
 		fmt.Println()
 	}
 
@@ -492,13 +510,21 @@ func displaySearchResults(results *SearchResults, query string) {
 		fmt.Printf("🖥️  Servers (%d)\n", len(results.Servers))
 		fmt.Println("-------------")
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "UUID\tNAME\tIP\tSTATUS\tDESCRIPTION")
-		fmt.Fprintln(w, "----\t----\t--\t------\t-----------")
+		if _, err := fmt.Fprintln(w, "UUID\tNAME\tIP\tSTATUS\tDESCRIPTION"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write server headers: %v\n", err)
+		}
+		if _, err := fmt.Fprintln(w, "----\t----\t--\t------\t-----------"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write server separators: %v\n", err)
+		}
 
 		for _, srv := range results.Servers {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", srv.UUID, srv.Name, srv.IP, srv.Status, srv.Description)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", srv.UUID, srv.Name, srv.IP, srv.Status, srv.Description); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to write server row: %v\n", err)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to flush server table: %v\n", err)
+		}
 		fmt.Println()
 	}
 

@@ -1991,5 +1991,5 @@ func (rc *ResourcesClient) List(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("empty response body")
 	}
 
-	return string(*resp.JSON200), nil
+	return *resp.JSON200, nil
 }

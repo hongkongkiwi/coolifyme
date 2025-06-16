@@ -28,8 +28,8 @@ type Profile struct {
 	BaseURL  string `yaml:"base_url" mapstructure:"base_url"`
 }
 
-// ConfigFile represents the entire configuration file structure
-type ConfigFile struct {
+// File represents the entire configuration file structure
+type File struct {
 	DefaultProfile string             `yaml:"default_profile" mapstructure:"default_profile"`
 	Profiles       map[string]Profile `yaml:"profiles" mapstructure:"profiles"`
 	GlobalSettings struct {
@@ -62,10 +62,11 @@ func LoadConfig() (*Config, error) {
 	v.AutomaticEnv()
 
 	// Also support COOLIFYME prefix for backward compatibility
-	v.BindEnv("api_token", "COOLIFYME_API_TOKEN", "COOLIFY_API_TOKEN")
-	v.BindEnv("base_url", "COOLIFYME_BASE_URL", "COOLIFY_BASE_URL", "COOLIFY_URL")
-	v.BindEnv("profile", "COOLIFYME_PROFILE", "COOLIFY_PROFILE")
-	v.BindEnv("log_level", "COOLIFYME_LOG_LEVEL", "COOLIFY_LOG_LEVEL")
+	// Note: viper.BindEnv errors are typically only configuration issues and safe to ignore
+	_ = v.BindEnv("api_token", "COOLIFYME_API_TOKEN", "COOLIFY_API_TOKEN")
+	_ = v.BindEnv("base_url", "COOLIFYME_BASE_URL", "COOLIFY_BASE_URL", "COOLIFY_URL")
+	_ = v.BindEnv("profile", "COOLIFYME_PROFILE", "COOLIFY_PROFILE")
+	_ = v.BindEnv("log_level", "COOLIFYME_LOG_LEVEL", "COOLIFY_LOG_LEVEL")
 
 	// Get the active profile name from environment or default
 	profileName := v.GetString("profile")
@@ -159,7 +160,7 @@ func SaveConfig(config *Config) error {
 	configFile, err := loadConfigFile()
 	if err != nil {
 		// Create new config file if it doesn't exist
-		configFile = &ConfigFile{
+		configFile = &File{
 			DefaultProfile: config.Profile,
 			Profiles:       make(map[string]Profile),
 		}
@@ -205,7 +206,7 @@ func CreateProfile(name, apiToken, baseURL string) error {
 
 	configFile, err := loadConfigFile()
 	if err != nil {
-		configFile = &ConfigFile{
+		configFile = &File{
 			DefaultProfile: name,
 			Profiles:       make(map[string]Profile),
 		}
@@ -307,7 +308,7 @@ func SetDefaultProfile(name string) error {
 }
 
 // loadConfigFile loads the configuration file structure
-func loadConfigFile() (*ConfigFile, error) {
+func loadConfigFile() (*File, error) {
 	configPath, err := getConfigFilePath()
 	if err != nil {
 		return nil, err
@@ -325,7 +326,7 @@ func loadConfigFile() (*ConfigFile, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var configFile ConfigFile
+	var configFile File
 	if err := v.Unmarshal(&configFile); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
@@ -334,7 +335,7 @@ func loadConfigFile() (*ConfigFile, error) {
 }
 
 // saveConfigFile saves the configuration file structure
-func saveConfigFile(configFile *ConfigFile) error {
+func saveConfigFile(configFile *File) error {
 	configPath, err := getConfigFilePath()
 	if err != nil {
 		return err
@@ -342,7 +343,7 @@ func saveConfigFile(configFile *ConfigFile) error {
 
 	// Ensure config directory exists
 	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 

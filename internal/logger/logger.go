@@ -6,8 +6,10 @@ import (
 	"os"
 )
 
-var defaultLogger *slog.Logger
-var colorEnabled bool
+var (
+	defaultLogger *slog.Logger
+	colorEnabled  bool
+)
 
 func init() {
 	// Create a default logger

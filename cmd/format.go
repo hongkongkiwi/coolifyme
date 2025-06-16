@@ -19,14 +19,23 @@ import (
 // OutputFormat represents different output formats
 type OutputFormat string
 
+// Output format constants
 const (
-	FormatJSON     OutputFormat = "json"
-	FormatYAML     OutputFormat = "yaml"
-	FormatTable    OutputFormat = "table"
-	FormatCSV      OutputFormat = "csv"
-	FormatCustom   OutputFormat = "custom"
-	FormatWide     OutputFormat = "wide"
-	FormatName     OutputFormat = "name"
+	// FormatJSON represents JSON output format
+	FormatJSON OutputFormat = "json"
+	// FormatYAML represents YAML output format
+	FormatYAML OutputFormat = "yaml"
+	// FormatTable represents tabular output format
+	FormatTable OutputFormat = "table"
+	// FormatCSV represents CSV output format
+	FormatCSV OutputFormat = "csv"
+	// FormatCustom represents custom template-based output format
+	FormatCustom OutputFormat = "custom"
+	// FormatWide represents wide table output format showing more columns
+	FormatWide OutputFormat = "wide"
+	// FormatName represents name-only output format
+	FormatName OutputFormat = "name"
+	// FormatTemplate represents Go template-based output format
 	FormatTemplate OutputFormat = "template"
 )
 
@@ -124,7 +133,12 @@ func outputJSON(data interface{}) error {
 
 func outputYAML(data interface{}) error {
 	encoder := yaml.NewEncoder(os.Stdout)
-	defer encoder.Close()
+	defer func() {
+		if err := encoder.Close(); err != nil {
+			// Log error but don't fail the operation since output may already be displayed
+			fmt.Fprintf(os.Stderr, "Warning: failed to close YAML encoder: %v\n", err)
+		}
+	}()
 	return encoder.Encode(data)
 }
 
@@ -143,23 +157,33 @@ func outputTable(data interface{}, options *FormatOptions) error {
 
 	// Create table writer
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() {
+		if err := w.Flush(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to flush table writer: %v\n", err)
+		}
+	}()
 
 	// Print headers if not disabled
 	if !options.NoHeaders {
-		fmt.Fprintln(w, strings.Join(headers, "\t"))
+		if _, err := fmt.Fprintln(w, strings.Join(headers, "\t")); err != nil {
+			return fmt.Errorf("failed to write table headers: %w", err)
+		}
 
 		// Print separator line
 		separators := make([]string, len(headers))
 		for i, header := range headers {
 			separators[i] = strings.Repeat("-", len(header))
 		}
-		fmt.Fprintln(w, strings.Join(separators, "\t"))
+		if _, err := fmt.Fprintln(w, strings.Join(separators, "\t")); err != nil {
+			return fmt.Errorf("failed to write table separators: %w", err)
+		}
 	}
 
 	// Print data rows
 	for _, row := range rows {
-		fmt.Fprintln(w, strings.Join(row, "\t"))
+		if _, err := fmt.Fprintln(w, strings.Join(row, "\t")); err != nil {
+			return fmt.Errorf("failed to write table row: %w", err)
+		}
 	}
 
 	return nil
@@ -340,7 +364,7 @@ func getHeaders(item interface{}, options *FormatOptions) []string {
 	return headers
 }
 
-func extractRow(item interface{}, headers []string, options *FormatOptions) []string {
+func extractRow(item interface{}, headers []string, _ *FormatOptions) []string {
 	row := make([]string, len(headers))
 
 	for i, header := range headers {
