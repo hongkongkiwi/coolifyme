@@ -533,6 +533,90 @@ var servicesUpdateEnvCmd = &cobra.Command{
 	},
 }
 
+// servicesUpdateEnvsCmd represents the services update-envs command
+var servicesUpdateEnvsCmd = &cobra.Command{
+	Use:   "update-envs <uuid>",
+	Short: "Bulk update environment variables",
+	Long:  "Update multiple environment variables for a service from a file or JSON string",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := createClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Get flag values
+		envDataFlag, _ := cmd.Flags().GetString("env-data")
+		envFile, _ := cmd.Flags().GetString("env-file")
+
+		if envDataFlag == "" && envFile == "" {
+			return fmt.Errorf("either --env-data or --env-file is required")
+		}
+
+		var envVarsList []interface{}
+		if envFile != "" {
+			// Read environment variables from file
+			content, err := os.ReadFile(envFile)
+			if err != nil {
+				return fmt.Errorf("failed to read env file: %w", err)
+			}
+			if err := json.Unmarshal(content, &envVarsList); err != nil {
+				return fmt.Errorf("failed to parse env file JSON: %w", err)
+			}
+		} else {
+			// Parse environment variables from JSON string
+			if err := json.Unmarshal([]byte(envDataFlag), &envVarsList); err != nil {
+				return fmt.Errorf("failed to parse env data JSON: %w", err)
+			}
+		}
+
+		// Convert to the expected structure
+		var envStructs []struct {
+			IsBuildTime *bool   `json:"is_build_time,omitempty"`
+			IsLiteral   *bool   `json:"is_literal,omitempty"`
+			IsMultiline *bool   `json:"is_multiline,omitempty"`
+			IsPreview   *bool   `json:"is_preview,omitempty"`
+			IsShownOnce *bool   `json:"is_shown_once,omitempty"`
+			Key         *string `json:"key,omitempty"`
+			Value       *string `json:"value,omitempty"`
+		}
+
+		// Parse each environment variable
+		for _, item := range envVarsList {
+			itemData, _ := json.Marshal(item)
+			var envVar struct {
+				IsBuildTime *bool   `json:"is_build_time,omitempty"`
+				IsLiteral   *bool   `json:"is_literal,omitempty"`
+				IsMultiline *bool   `json:"is_multiline,omitempty"`
+				IsPreview   *bool   `json:"is_preview,omitempty"`
+				IsShownOnce *bool   `json:"is_shown_once,omitempty"`
+				Key         *string `json:"key,omitempty"`
+				Value       *string `json:"value,omitempty"`
+			}
+			if err := json.Unmarshal(itemData, &envVar); err == nil {
+				envStructs = append(envStructs, envVar)
+			}
+		}
+
+		// Create request body
+		req := coolify.UpdateEnvsByServiceUuidJSONRequestBody{
+			Data: envStructs,
+		}
+
+		ctx := context.Background()
+		serviceUUID := args[0]
+
+		message, err := client.Services().UpdateEnvs(ctx, serviceUUID, req)
+		if err != nil {
+			return fmt.Errorf("failed to bulk update environment variables: %w", err)
+		}
+
+		fmt.Printf("✅ Environment variables updated successfully\n")
+		fmt.Printf("   💬 Message: %s\n", message)
+		return nil
+	},
+}
+
 // servicesDeleteEnvCmd represents the services delete-env command
 var servicesDeleteEnvCmd = &cobra.Command{
 	Use:   "delete-env <service-uuid> <env-uuid>",
@@ -573,6 +657,7 @@ func init() {
 	servicesCmd.AddCommand(servicesListEnvsCmd)
 	servicesCmd.AddCommand(servicesCreateEnvCmd)
 	servicesCmd.AddCommand(servicesUpdateEnvCmd)
+	servicesCmd.AddCommand(servicesUpdateEnvsCmd)
 	servicesCmd.AddCommand(servicesDeleteEnvCmd)
 
 	// Flags for services list command
@@ -627,4 +712,8 @@ func init() {
 	servicesUpdateEnvCmd.Flags().BoolP("is-shown-once", "o", false, "Is shown once environment variable")
 	_ = servicesUpdateEnvCmd.MarkFlagRequired("key")
 	_ = servicesUpdateEnvCmd.MarkFlagRequired("value")
+
+	// Flags for bulk environment variable update command
+	servicesUpdateEnvsCmd.Flags().StringP("env-data", "d", "", "JSON string containing environment variables")
+	servicesUpdateEnvsCmd.Flags().StringP("env-file", "f", "", "File containing environment variables in JSON format")
 }

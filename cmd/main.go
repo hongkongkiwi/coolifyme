@@ -53,6 +53,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Add subcommands
+	rootCmd.AddCommand(apiCmd)
 	rootCmd.AddCommand(applicationsCmd)
 	rootCmd.AddCommand(deployCmd())
 	rootCmd.AddCommand(databasesCmd)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	coolify "github.com/hongkongkiwi/coolifyme/internal/api"
@@ -16,7 +17,7 @@ var serversCmd = &cobra.Command{
 	Use:     "servers",
 	Aliases: []string{"server", "srv"},
 	Short:   "Manage servers",
-	Long:    "Manage Coolify servers - list, create, update, and delete servers",
+	Long:    "Manage Coolify servers - list, create, update, delete, and monitor servers",
 }
 
 // serversListCmd represents the servers list command
@@ -24,7 +25,7 @@ var serversListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
 	Short:   "List servers",
-	Long:    "List all servers in your Coolify instance",
+	Long:    "List all servers in your Coolify instance with their current status",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
@@ -59,15 +60,18 @@ var serversListCmd = &cobra.Command{
 		}()
 
 		// Print header
-		_, _ = fmt.Fprintln(w, "UUID\tNAME\tIP\tSTATUS\tDESCRIPTION")
-		_, _ = fmt.Fprintln(w, "----\t----\t--\t------\t-----------")
+		_, _ = fmt.Fprintln(w, "UUID\tNAME\tIP\tPORT\tUSER\tSTATUS\tPROXY\tDESCRIPTION")
+		_, _ = fmt.Fprintln(w, "----\t----\t--\t----\t----\t------\t-----\t-----------")
 
 		// Print servers
 		for _, server := range servers {
 			uuid := ""
 			name := ""
 			ip := ""
+			port := ""
+			user := ""
 			status := ""
+			proxy := ""
 			description := ""
 
 			if server.Uuid != nil {
@@ -79,16 +83,27 @@ var serversListCmd = &cobra.Command{
 			if server.Ip != nil {
 				ip = *server.Ip
 			}
+			if server.Port != nil {
+				port = fmt.Sprintf("%d", *server.Port)
+			}
+			if server.User != nil {
+				user = *server.User
+			}
 			if server.ValidationLogs != nil {
 				status = "validated"
 			} else {
 				status = "unknown"
 			}
+			// Use the direct ProxyType field
+			if server.ProxyType != nil {
+				proxy = string(*server.ProxyType)
+			}
 			if server.Description != nil {
 				description = *server.Description
 			}
 
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", uuid, name, ip, status, description)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				uuid, name, ip, port, user, status, proxy, description)
 		}
 
 		return nil
@@ -99,7 +114,7 @@ var serversListCmd = &cobra.Command{
 var serversCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create server",
-	Long:  "Create a new server in your Coolify instance",
+	Long:  "Create a new server in your Coolify instance with advanced configuration options",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := createClient()
 		if err != nil {
@@ -113,6 +128,9 @@ var serversCreateCmd = &cobra.Command{
 		user, _ := cmd.Flags().GetString("user")
 		port, _ := cmd.Flags().GetInt32("port")
 		privateKeyUuid, _ := cmd.Flags().GetString("private-key-uuid")
+		isBuildServer, _ := cmd.Flags().GetBool("is-build-server")
+		instantValidate, _ := cmd.Flags().GetBool("instant-validate")
+		proxyType, _ := cmd.Flags().GetString("proxy-type")
 
 		// Validate required fields
 		if name == "" {
@@ -128,6 +146,21 @@ var serversCreateCmd = &cobra.Command{
 			return fmt.Errorf("private key UUID is required (--private-key-uuid)")
 		}
 
+		// Validate proxy type if provided
+		if proxyType != "" {
+			validProxyTypes := []string{"traefik", "caddy", "none"}
+			isValid := false
+			for _, valid := range validProxyTypes {
+				if proxyType == valid {
+					isValid = true
+					break
+				}
+			}
+			if !isValid {
+				return fmt.Errorf("invalid proxy type: %s. Valid options: %s", proxyType, strings.Join(validProxyTypes, ", "))
+			}
+		}
+
 		// Create request body
 		portInt := int(port)
 		req := coolify.CreateServerJSONRequestBody{
@@ -137,6 +170,27 @@ var serversCreateCmd = &cobra.Command{
 			User:           &user,
 			Port:           &portInt,
 			PrivateKeyUuid: &privateKeyUuid,
+		}
+
+		// Add optional fields if they have specific values
+		if isBuildServer {
+			req.IsBuildServer = &isBuildServer
+		}
+		if instantValidate {
+			req.InstantValidate = &instantValidate
+		}
+		if proxyType != "" {
+			// Convert string to proper enum type
+			var proxyTypeEnum coolify.CreateServerJSONBodyProxyType
+			switch proxyType {
+			case "traefik":
+				proxyTypeEnum = coolify.CreateServerJSONBodyProxyTypeTraefik
+			case "caddy":
+				proxyTypeEnum = coolify.CreateServerJSONBodyProxyTypeCaddy
+			case "none":
+				proxyTypeEnum = coolify.CreateServerJSONBodyProxyTypeNone
+			}
+			req.ProxyType = &proxyTypeEnum
 		}
 
 		ctx := context.Background()
@@ -149,7 +203,17 @@ var serversCreateCmd = &cobra.Command{
 		fmt.Printf("✅ Server created successfully\n")
 		fmt.Printf("   📛 Name: %s\n", name)
 		fmt.Printf("   📦 UUID: %s\n", uuid)
-		fmt.Printf("   🌐 IP: %s\n", ip)
+		fmt.Printf("   🌐 IP: %s:%d\n", ip, port)
+		fmt.Printf("   👤 User: %s\n", user)
+		if proxyType != "" {
+			fmt.Printf("   🔧 Proxy: %s\n", proxyType)
+		}
+		if isBuildServer {
+			fmt.Printf("   🏗️  Build Server: Yes\n")
+		}
+		if instantValidate {
+			fmt.Printf("   ⚡ Instant Validate: Yes\n")
+		}
 		return nil
 	},
 }
@@ -158,7 +222,7 @@ var serversCreateCmd = &cobra.Command{
 var serversGetCmd = &cobra.Command{
 	Use:   "get <uuid>",
 	Short: "Get server details",
-	Long:  "Get detailed information about a specific server",
+	Long:  "Get detailed information about a specific server including configuration and status",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
@@ -206,6 +270,42 @@ var serversGetCmd = &cobra.Command{
 		if server.Port != nil {
 			fmt.Printf("🔌 Port: %d\n", *server.Port)
 		}
+
+		// Display proxy type from the direct field
+		if server.ProxyType != nil {
+			fmt.Printf("🔧 Proxy Type: %s\n", string(*server.ProxyType))
+		}
+
+		// Display build server setting from the Settings field
+		if server.Settings != nil && server.Settings.IsBuildServer != nil && *server.Settings.IsBuildServer {
+			fmt.Printf("🏗️  Build Server: Yes\n")
+		}
+
+		// Display validation status
+		if server.ValidationLogs != nil {
+			fmt.Printf("✅ Status: Validated\n")
+		} else {
+			fmt.Printf("⚠️  Status: Not validated\n")
+		}
+
+		// Display additional server information
+		if server.Settings != nil {
+			if server.Settings.IsReachable != nil {
+				if *server.Settings.IsReachable {
+					fmt.Printf("📡 Reachable: Yes\n")
+				} else {
+					fmt.Printf("📡 Reachable: No\n")
+				}
+			}
+			if server.Settings.IsUsable != nil {
+				if *server.Settings.IsUsable {
+					fmt.Printf("⚡ Usable: Yes\n")
+				} else {
+					fmt.Printf("⚡ Usable: No\n")
+				}
+			}
+		}
+
 		// Note: Private key UUID is not returned by the API for security reasons
 
 		return nil
@@ -216,7 +316,7 @@ var serversGetCmd = &cobra.Command{
 var serversUpdateCmd = &cobra.Command{
 	Use:   "update <uuid>",
 	Short: "Update server",
-	Long:  "Update an existing server",
+	Long:  "Update an existing server configuration including advanced options",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
@@ -231,6 +331,24 @@ var serversUpdateCmd = &cobra.Command{
 		user, _ := cmd.Flags().GetString("user")
 		port, _ := cmd.Flags().GetInt32("port")
 		privateKeyUuid, _ := cmd.Flags().GetString("private-key-uuid")
+		isBuildServer, _ := cmd.Flags().GetBool("is-build-server")
+		instantValidate, _ := cmd.Flags().GetBool("instant-validate")
+		proxyType, _ := cmd.Flags().GetString("proxy-type")
+
+		// Validate proxy type if provided
+		if cmd.Flags().Changed("proxy-type") && proxyType != "" {
+			validProxyTypes := []string{"traefik", "caddy", "none"}
+			isValid := false
+			for _, valid := range validProxyTypes {
+				if proxyType == valid {
+					isValid = true
+					break
+				}
+			}
+			if !isValid {
+				return fmt.Errorf("invalid proxy type: %s. Valid options: %s", proxyType, strings.Join(validProxyTypes, ", "))
+			}
+		}
 
 		// Create request body with only provided values
 		req := coolify.UpdateServerByUuidJSONRequestBody{}
@@ -254,6 +372,25 @@ var serversUpdateCmd = &cobra.Command{
 		if privateKeyUuid != "" {
 			req.PrivateKeyUuid = &privateKeyUuid
 		}
+		if cmd.Flags().Changed("is-build-server") {
+			req.IsBuildServer = &isBuildServer
+		}
+		if cmd.Flags().Changed("instant-validate") {
+			req.InstantValidate = &instantValidate
+		}
+		if cmd.Flags().Changed("proxy-type") && proxyType != "" {
+			// Convert string to proper enum type
+			var proxyTypeEnum coolify.UpdateServerByUuidJSONBodyProxyType
+			switch proxyType {
+			case "traefik":
+				proxyTypeEnum = coolify.Traefik
+			case "caddy":
+				proxyTypeEnum = coolify.Caddy
+			case "none":
+				proxyTypeEnum = coolify.None
+			}
+			req.ProxyType = &proxyTypeEnum
+		}
 
 		ctx := context.Background()
 		serverUUID := args[0]
@@ -270,6 +407,9 @@ var serversUpdateCmd = &cobra.Command{
 		if server.Name != nil {
 			fmt.Printf("   📛 Name: %s\n", *server.Name)
 		}
+		if server.Ip != nil && server.Port != nil {
+			fmt.Printf("   🌐 IP: %s:%d\n", *server.Ip, *server.Port)
+		}
 		return nil
 	},
 }
@@ -278,7 +418,7 @@ var serversUpdateCmd = &cobra.Command{
 var serversDeleteCmd = &cobra.Command{
 	Use:   "delete <uuid>",
 	Short: "Delete server",
-	Long:  "Delete a server from your Coolify instance",
+	Long:  "Delete a server from your Coolify instance (this action cannot be undone)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
@@ -314,9 +454,9 @@ var serversDeleteCmd = &cobra.Command{
 var serversGetResourcesCmd = &cobra.Command{
 	Use:   "get-resources <uuid>",
 	Short: "Get server resources",
-	Long:  "Get resource information for a specific server",
+	Long:  "Get detailed resource information for a specific server including applications, databases, and services",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -330,9 +470,34 @@ var serversGetResourcesCmd = &cobra.Command{
 			return fmt.Errorf("failed to get server resources: %w", err)
 		}
 
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+		if jsonOutput {
+			fmt.Println(resources)
+			return nil
+		}
+
+		// Parse the JSON response for better formatting
+		var resourceData interface{}
+		if err := json.Unmarshal([]byte(resources), &resourceData); err != nil {
+			// If parsing fails, just display the raw response
+			fmt.Printf("📊 Server Resources\n")
+			fmt.Printf("==================\n")
+			fmt.Printf("%s\n", resources)
+			return nil
+		}
+
+		// Pretty print the JSON
+		prettyJSON, err := json.MarshalIndent(resourceData, "", "  ")
+		if err != nil {
+			fmt.Printf("📊 Server Resources\n")
+			fmt.Printf("==================\n")
+			fmt.Printf("%s\n", resources)
+			return nil
+		}
+
 		fmt.Printf("📊 Server Resources\n")
 		fmt.Printf("==================\n")
-		fmt.Printf("%s\n", resources)
+		fmt.Printf("%s\n", string(prettyJSON))
 		return nil
 	},
 }
@@ -341,9 +506,9 @@ var serversGetResourcesCmd = &cobra.Command{
 var serversGetDomainsCmd = &cobra.Command{
 	Use:   "get-domains <uuid>",
 	Short: "Get server domains",
-	Long:  "Get domain information for a specific server",
+	Long:  "Get domain configuration and routing information for a specific server",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -357,9 +522,34 @@ var serversGetDomainsCmd = &cobra.Command{
 			return fmt.Errorf("failed to get server domains: %w", err)
 		}
 
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+		if jsonOutput {
+			fmt.Println(domains)
+			return nil
+		}
+
+		// Parse the JSON response for better formatting
+		var domainData interface{}
+		if err := json.Unmarshal([]byte(domains), &domainData); err != nil {
+			// If parsing fails, just display the raw response
+			fmt.Printf("🌐 Server Domains\n")
+			fmt.Printf("================\n")
+			fmt.Printf("%s\n", domains)
+			return nil
+		}
+
+		// Pretty print the JSON
+		prettyJSON, err := json.MarshalIndent(domainData, "", "  ")
+		if err != nil {
+			fmt.Printf("🌐 Server Domains\n")
+			fmt.Printf("================\n")
+			fmt.Printf("%s\n", domains)
+			return nil
+		}
+
 		fmt.Printf("🌐 Server Domains\n")
 		fmt.Printf("================\n")
-		fmt.Printf("%s\n", domains)
+		fmt.Printf("%s\n", string(prettyJSON))
 		return nil
 	},
 }
@@ -368,9 +558,9 @@ var serversGetDomainsCmd = &cobra.Command{
 var serversValidateCmd = &cobra.Command{
 	Use:   "validate <uuid>",
 	Short: "Validate server",
-	Long:  "Validate server connection and configuration",
+	Long:  "Validate server connection, configuration, and readiness for deployment",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := createClient()
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
@@ -384,9 +574,24 @@ var serversValidateCmd = &cobra.Command{
 			return fmt.Errorf("failed to validate server: %w", err)
 		}
 
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+		if jsonOutput {
+			output := map[string]interface{}{
+				"message":     result,
+				"server_uuid": serverUUID,
+			}
+			jsonData, err := json.MarshalIndent(output, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal JSON: %w", err)
+			}
+			fmt.Println(string(jsonData))
+			return nil
+		}
+
 		fmt.Printf("✅ Server Validation\n")
 		fmt.Printf("===================\n")
-		fmt.Printf("%s\n", result)
+		fmt.Printf("Server: %s\n", serverUUID)
+		fmt.Printf("Status: %s\n", result)
 		return nil
 	},
 }
@@ -412,6 +617,9 @@ func init() {
 	serversCreateCmd.Flags().StringP("user", "u", "", "SSH user (required)")
 	serversCreateCmd.Flags().Int32P("port", "p", 22, "SSH port")
 	serversCreateCmd.Flags().StringP("private-key-uuid", "k", "", "Private key UUID (required)")
+	serversCreateCmd.Flags().Bool("is-build-server", false, "Configure as build server")
+	serversCreateCmd.Flags().Bool("instant-validate", false, "Validate server immediately after creation")
+	serversCreateCmd.Flags().String("proxy-type", "", "Proxy type (traefik, caddy, none)")
 	_ = serversCreateCmd.MarkFlagRequired("name")
 	_ = serversCreateCmd.MarkFlagRequired("ip")
 	_ = serversCreateCmd.MarkFlagRequired("user")
@@ -427,7 +635,19 @@ func init() {
 	serversUpdateCmd.Flags().StringP("user", "u", "", "SSH user")
 	serversUpdateCmd.Flags().Int32P("port", "p", 22, "SSH port")
 	serversUpdateCmd.Flags().StringP("private-key-uuid", "k", "", "Private key UUID")
+	serversUpdateCmd.Flags().Bool("is-build-server", false, "Configure as build server")
+	serversUpdateCmd.Flags().Bool("instant-validate", false, "Validate server after update")
+	serversUpdateCmd.Flags().String("proxy-type", "", "Proxy type (traefik, caddy, none)")
 
 	// Flags for servers delete command
 	serversDeleteCmd.Flags().BoolP("force", "f", false, "Force deletion without confirmation")
+
+	// Flags for servers get-resources command
+	serversGetResourcesCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+
+	// Flags for servers get-domains command
+	serversGetDomainsCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+
+	// Flags for servers validate command
+	serversValidateCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
 }
