@@ -7,6 +7,7 @@ import (
 )
 
 var defaultLogger *slog.Logger
+var colorEnabled bool
 
 func init() {
 	// Create a default logger
@@ -27,6 +28,25 @@ func SetJSONOutput() {
 	defaultLogger = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
+}
+
+// SetColorOutput enables or disables color output
+func SetColorOutput(enabled bool) {
+	colorEnabled = enabled
+}
+
+// ColorEnabled returns whether color output is enabled
+func ColorEnabled() bool {
+	return colorEnabled
+}
+
+// IsTerminal checks if output is going to a terminal
+func IsTerminal() bool {
+	stat, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 // Debug logs a debug message

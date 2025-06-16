@@ -2,9 +2,11 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	coolify "github.com/hongkongkiwi/coolifyme/internal/api"
 	"github.com/hongkongkiwi/coolifyme/internal/config"
+	"github.com/hongkongkiwi/coolifyme/internal/logger"
 )
 
 // Client wraps the generated Coolify API client
@@ -26,9 +29,9 @@ func New(cfg *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("API token is required")
 	}
 
-	// Create HTTP client with authentication
+	// Create HTTP client with authentication and logging
 	httpClient := &http.Client{
-		Transport: &authTransport{
+		Transport: &loggingTransport{
 			token: cfg.APIToken,
 			base:  http.DefaultTransport,
 		},
@@ -46,17 +49,86 @@ func New(cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-// authTransport implements HTTP transport with Bearer token authentication
-type authTransport struct {
+// loggingTransport implements HTTP transport with Bearer token authentication and request/response logging
+type loggingTransport struct {
 	token string
 	base  http.RoundTripper
 }
 
-func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+
+	// Set authentication headers
 	req.Header.Set("Authorization", "Bearer "+t.token)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	return t.base.RoundTrip(req)
+
+	// Log request details if debug logging is enabled
+	logger.Debug("API Request",
+		"method", req.Method,
+		"url", req.URL.String(),
+		"headers", formatHeaders(req.Header),
+	)
+
+	// Log request body if present
+	if req.Body != nil {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err == nil {
+			req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			if len(bodyBytes) > 0 {
+				logger.Debug("API Request Body", "body", string(bodyBytes))
+			}
+		}
+	}
+
+	// Make the request
+	resp, err := t.base.RoundTrip(req)
+	duration := time.Since(start)
+
+	if err != nil {
+		logger.Debug("API Request Failed",
+			"method", req.Method,
+			"url", req.URL.String(),
+			"duration", duration.String(),
+			"error", err.Error(),
+		)
+		return resp, err
+	}
+
+	// Log response details
+	logger.Debug("API Response",
+		"method", req.Method,
+		"url", req.URL.String(),
+		"status", resp.Status,
+		"duration", duration.String(),
+		"headers", formatHeaders(resp.Header),
+	)
+
+	// Log response body if debug logging and it's a small response
+	if resp.Body != nil && resp.ContentLength < 10000 { // Only log small responses
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err == nil {
+			resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			if len(bodyBytes) > 0 {
+				logger.Debug("API Response Body", "body", string(bodyBytes))
+			}
+		}
+	}
+
+	return resp, nil
+}
+
+// formatHeaders formats HTTP headers for logging (excluding sensitive ones)
+func formatHeaders(headers http.Header) string {
+	var formatted []string
+	for key, values := range headers {
+		if strings.ToLower(key) == "authorization" {
+			formatted = append(formatted, fmt.Sprintf("%s: [REDACTED]", key))
+		} else {
+			formatted = append(formatted, fmt.Sprintf("%s: %s", key, strings.Join(values, ", ")))
+		}
+	}
+	return strings.Join(formatted, "; ")
 }
 
 // Applications returns an applications client
