@@ -23,20 +23,20 @@ type Config struct {
 
 // Profile represents a configuration profile
 type Profile struct {
-	Name     string `yaml:"name"`
-	APIToken string `yaml:"api_token"`
-	BaseURL  string `yaml:"base_url"`
+	Name     string `yaml:"name" mapstructure:"name"`
+	APIToken string `yaml:"api_token" mapstructure:"api_token"`
+	BaseURL  string `yaml:"base_url" mapstructure:"base_url"`
 }
 
 // ConfigFile represents the entire configuration file structure
 type ConfigFile struct {
-	DefaultProfile string             `yaml:"default_profile"`
-	Profiles       map[string]Profile `yaml:"profiles"`
+	DefaultProfile string             `yaml:"default_profile" mapstructure:"default_profile"`
+	Profiles       map[string]Profile `yaml:"profiles" mapstructure:"profiles"`
 	GlobalSettings struct {
-		OutputFormat string `yaml:"output_format,omitempty"`
-		ColorOutput  *bool  `yaml:"color_output,omitempty"`
-		LogLevel     string `yaml:"log_level,omitempty"`
-	} `yaml:"global_settings,omitempty"`
+		OutputFormat string `yaml:"output_format,omitempty" mapstructure:"output_format"`
+		ColorOutput  *bool  `yaml:"color_output,omitempty" mapstructure:"color_output"`
+		LogLevel     string `yaml:"log_level,omitempty" mapstructure:"log_level"`
+	} `yaml:"global_settings,omitempty" mapstructure:"global_settings"`
 }
 
 var defaultConfig = Config{
@@ -48,79 +48,92 @@ var defaultConfig = Config{
 
 // LoadConfig loads configuration from file and environment variables
 func LoadConfig() (*Config, error) {
+	// Create a new viper instance for this operation to avoid conflicts
+	v := viper.New()
+
 	// Set default values
-	viper.SetDefault("base_url", defaultConfig.BaseURL)
-	viper.SetDefault("profile", defaultConfig.Profile)
-	viper.SetDefault("output_format", defaultConfig.OutputFormat)
-	viper.SetDefault("log_level", defaultConfig.LogLevel)
-
-	// Set config file name and paths
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-
-	// Add config paths
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	configDir := filepath.Join(home, ".config", "coolifyme")
-	viper.AddConfigPath(configDir)
-	viper.AddConfigPath(".")
+	v.SetDefault("base_url", defaultConfig.BaseURL)
+	v.SetDefault("profile", defaultConfig.Profile)
+	v.SetDefault("output_format", defaultConfig.OutputFormat)
+	v.SetDefault("log_level", defaultConfig.LogLevel)
 
 	// Environment variable bindings with different prefixes for flexibility
-	viper.SetEnvPrefix("COOLIFY")
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("COOLIFY")
+	v.AutomaticEnv()
 
 	// Also support COOLIFYME prefix for backward compatibility
-	viper.BindEnv("api_token", "COOLIFYME_API_TOKEN", "COOLIFY_API_TOKEN")
-	viper.BindEnv("base_url", "COOLIFYME_BASE_URL", "COOLIFY_BASE_URL", "COOLIFY_URL")
-	viper.BindEnv("profile", "COOLIFYME_PROFILE", "COOLIFY_PROFILE")
-	viper.BindEnv("log_level", "COOLIFYME_LOG_LEVEL", "COOLIFY_LOG_LEVEL")
+	v.BindEnv("api_token", "COOLIFYME_API_TOKEN", "COOLIFY_API_TOKEN")
+	v.BindEnv("base_url", "COOLIFYME_BASE_URL", "COOLIFY_BASE_URL", "COOLIFY_URL")
+	v.BindEnv("profile", "COOLIFYME_PROFILE", "COOLIFY_PROFILE")
+	v.BindEnv("log_level", "COOLIFYME_LOG_LEVEL", "COOLIFY_LOG_LEVEL")
 
-	// Read config file
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
+	// Get the active profile name from environment or default
+	profileName := v.GetString("profile")
+
+	// Try to load the config file to get the default profile
+	configFile, configFileErr := loadConfigFile()
+	if configFileErr == nil {
+		// If no profile is specified, use the default profile from config file
+		if profileName == "" || profileName == "default" {
+			if configFile.DefaultProfile != "" {
+				profileName = configFile.DefaultProfile
+			} else {
+				profileName = "default"
+			}
 		}
-		// Config file not found, use defaults
+	} else {
+		// No config file exists, use defaults
+		if profileName == "" {
+			profileName = "default"
+		}
 	}
 
-	// Get the active profile name
-	profileName := viper.GetString("profile")
-
-	// Load configuration from profile if it exists
+	// Initialize config with defaults
 	config := &Config{
 		Profile:      profileName,
-		OutputFormat: viper.GetString("output_format"),
-		LogLevel:     viper.GetString("log_level"),
+		OutputFormat: v.GetString("output_format"),
+		LogLevel:     v.GetString("log_level"),
+		BaseURL:      defaultConfig.BaseURL, // Set default first
 	}
 
 	// Check if color output is explicitly set
-	if viper.IsSet("color_output") {
-		colorOutput := viper.GetBool("color_output")
+	if v.IsSet("color_output") {
+		colorOutput := v.GetBool("color_output")
 		config.ColorOutput = &colorOutput
 	}
 
 	// Try to load from profile-specific configuration
-	if profileConfig, err := LoadProfile(profileName); err == nil {
-		config.APIToken = profileConfig.APIToken
-		config.BaseURL = profileConfig.BaseURL
-	} else {
-		// Fallback to direct config values
-		config.APIToken = viper.GetString("api_token")
-		config.BaseURL = viper.GetString("base_url")
-		if config.BaseURL == "" {
-			config.BaseURL = defaultConfig.BaseURL
+	if configFileErr == nil {
+		if profileConfig, err := LoadProfile(profileName); err == nil {
+			config.APIToken = profileConfig.APIToken
+			config.BaseURL = profileConfig.BaseURL
+		}
+
+		// Load global settings from config file
+		config.OutputFormat = configFile.GlobalSettings.OutputFormat
+		if config.OutputFormat == "" {
+			config.OutputFormat = v.GetString("output_format")
+		}
+		config.LogLevel = configFile.GlobalSettings.LogLevel
+		if config.LogLevel == "" {
+			config.LogLevel = v.GetString("log_level")
+		}
+		if configFile.GlobalSettings.ColorOutput != nil {
+			config.ColorOutput = configFile.GlobalSettings.ColorOutput
 		}
 	}
 
 	// Command-line flags and environment variables override profile settings
-	if token := viper.GetString("api_token"); token != "" {
-		config.APIToken = token
+	// Only override if explicitly set via environment variables
+	if v.IsSet("api_token") && os.Getenv("COOLIFYME_API_TOKEN") != "" || os.Getenv("COOLIFY_API_TOKEN") != "" {
+		if token := v.GetString("api_token"); token != "" {
+			config.APIToken = token
+		}
 	}
-	if url := viper.GetString("base_url"); url != "" {
-		config.BaseURL = url
+	if v.IsSet("base_url") && (os.Getenv("COOLIFYME_BASE_URL") != "" || os.Getenv("COOLIFY_BASE_URL") != "" || os.Getenv("COOLIFY_URL") != "") {
+		if url := v.GetString("base_url"); url != "" {
+			config.BaseURL = url
+		}
 	}
 
 	return config, nil
@@ -147,14 +160,21 @@ func SaveConfig(config *Config) error {
 	if err != nil {
 		// Create new config file if it doesn't exist
 		configFile = &ConfigFile{
-			DefaultProfile: "default",
+			DefaultProfile: config.Profile,
 			Profiles:       make(map[string]Profile),
 		}
 	}
 
+	// If no profile specified, use "default"
+	profileName := config.Profile
+	if profileName == "" {
+		profileName = "default"
+		config.Profile = profileName
+	}
+
 	// Update or create the profile
 	profile := Profile{
-		Name:     config.Profile,
+		Name:     profileName,
 		APIToken: config.APIToken,
 		BaseURL:  config.BaseURL,
 	}
@@ -162,16 +182,16 @@ func SaveConfig(config *Config) error {
 	if configFile.Profiles == nil {
 		configFile.Profiles = make(map[string]Profile)
 	}
-	configFile.Profiles[config.Profile] = profile
+	configFile.Profiles[profileName] = profile
 
 	// Update global settings
 	configFile.GlobalSettings.OutputFormat = config.OutputFormat
 	configFile.GlobalSettings.ColorOutput = config.ColorOutput
 	configFile.GlobalSettings.LogLevel = config.LogLevel
 
-	// Set as default profile if it's the only one
-	if len(configFile.Profiles) == 1 || configFile.DefaultProfile == "" {
-		configFile.DefaultProfile = config.Profile
+	// Set as default profile if it's the only one or if we're saving the default profile
+	if len(configFile.Profiles) == 1 || configFile.DefaultProfile == "" || profileName == "default" {
+		configFile.DefaultProfile = profileName
 	}
 
 	return saveConfigFile(configFile)

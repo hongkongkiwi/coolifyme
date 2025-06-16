@@ -58,7 +58,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	cfg := &Config{
 		APIToken: "test-token",
 		BaseURL:  "https://test.example.com/api/v1",
-		Profile:  "test",
+		Profile:  "default",
 	}
 
 	err = SaveConfig(cfg)
